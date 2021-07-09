@@ -661,6 +661,45 @@
                   (do (print (apply str (butlast (rest (str (second fetched)))))) (flush)
                       (recur cod mem (inc cont-prg) pila-dat pila-llam)))
           NL (do (prn) (recur cod mem (inc cont-prg) pila-dat pila-llam))
+          POP (let [val (last (pila_dat)) pos (second fetched)]
+                   (recur cod (assoc mem pos val) (inc cont_prg) (vec (butlast pila-dat)) pila-llam)
+              )
+          PFM (let [val (nth mem (second fetched))]
+                   (recur cod (conj mem val) (inc cont_prg) pila-dat pila-lam))
+          PFI (let [val (second fetched)]
+                   (recur cod (conj mem val) (inc cont_prg) pila-dat pila-lam))
+          ADD (let [val1 (last pila_dat) val2 (last (butlast pila_dat))]
+                   (recur cod mem (inc cont_prg) (vec (cons (+ val1 val2) pila-dat)) pila-lam))
+          SUB (let [val1 (last pila_dat) val2 (last (butlast pila_dat))]
+                   (recur cod mem (inc cont_prg) (vec (cons (- val1 val2) pila-dat)) pila-lam))
+          MUL (let [val1 (last pila_dat) val2 (last (butlast pila_dat))]
+                   (recur cod mem (inc cont_prg) (vec (cons (* val1 val2) pila-dat)) pila-lam))
+          DIV (let [val1 (last pila_dat) val2 (last (butlast pila_dat))]
+                   (recur cod mem (inc cont_prg) (vec (cons (/ val1 val2) pila-dat)) pila-lam))
+          EQ (let [val1 (last pila_dat) val2 (last (butlast pila_dat))]
+                   (recur cod mem (inc cont_prg) (vec (cons (if (= val1 val2) 1 0) pila-dat)) pila-lam))
+          NEQ (let [val1 (last pila_dat) val2 (last (butlast pila_dat))]
+                   (recur cod (mem (inc cont_prg) (vec (cons (if (= val1 val2) 0 1) pila-dat)) pila-lam))
+          GT (let [val1 (last pila_dat) val2 (last (butlast pila_dat))]
+                   (recur cod mem (inc cont_prg) (vec (cons (if (> val1 val2) 0 1) pila-dat)) pila-lam))
+          GTE (let [val1 (last pila_dat) val2 (last (butlast pila_dat))]
+                   (recur cod mem (inc cont_prg) (vec (cons (if (>= val1 val2) 0 1) pila-dat)) pila-lam))
+          LT (let [val1 (last pila_dat) val2 (last (butlast pila_dat))]
+                   (recur cod mem (inc cont_prg) (vec (cons (if (< val1 val2) 0 1) pila-dat)) pila-lam))
+          LTE (let [val1 (last pila_dat) val2 (last (butlast pila_dat))]
+                   (recur cod mem (inc cont_prg) (vec (cons (if (<= val1 val2) 0 1) pila-dat)) pila-lam))
+          NEG (let [val (last pila_dat)]
+                   (recur cod mem (inc cont_prg) (vec (cons (- val) pila-dat)) pila-lam))
+          ODD (let [val1 (last pila_dat) val2 (last (butlast pila_dat))]
+                   (recur cod mem (inc cont_prg) (vec (cons (if (<= val1 val2) 0 1) pila-dat)) pila-lam))
+          JMP PFM (let [val (second fetched)]
+                   (recur cod mem val pila-dat pila-lam))
+          JC (let [val (if (= (last pila_dat) 0) (inc cont_prg) (second fetched))]
+                   (recur cod mem val (butlast pila-dat) pila-lam))
+          CAL (let [val (second fetched)]
+                   (recur cod mem val pila-dat (conj pila-lam (inc cont_prg))))
+          RET (let [val (last pila-lam)]
+                   (recur cod mem val pila-dat (butlast pila-lam))
        )
   )
 )
@@ -678,6 +717,7 @@
 ; "  WRITELN ('Se ingresa un valor, se muestra su doble.');"
  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn a-mayusculas-salvo-strings [s] 
+
 )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
