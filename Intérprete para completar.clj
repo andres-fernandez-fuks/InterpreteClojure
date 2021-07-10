@@ -716,8 +716,20 @@
 ; user=> (a-mayusculas-salvo-strings "  writeln ('Se ingresa un valor, se muestra su doble.');")
 ; "  WRITELN ('Se ingresa un valor, se muestra su doble.');"
  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defn a-mayusculas-salvo-strings [s] 
-
+(defn a-mayusculas-salvo-strings 
+  ([s]
+    (let [sec_letras (seq s)]
+      (apply str (reverse (a-mayusculas-salvo-strings sec_letras true)))
+    )
+  )
+  ([secuencia es_mayuscula]
+    (if (empty? secuencia) '()
+      (let [es_mayuscula_act (if (= (last secuencia) \') (not es_mayuscula) es_mayuscula)]
+         (cons (if es_mayuscula (clojure.string/upper-case (last secuencia)) (last secuencia)) 
+                              (a-mayusculas-salvo-strings (butlast secuencia) es_mayuscula_act))
+      )
+    )
+  )
 )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -732,7 +744,10 @@
 ; false
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn palabra-reservada? [x]
-)
+   (let [palabras_reservadas ["CONST" "VAR" "PROCEDURE" "CALL" "BEGIN" "IF" "WHILE" "ODD"]]
+      (if (some #(= (str x) %) palabras_reservadas) true false)
+   )   
+) 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Recibe un dato y devuelve true si es un identificador valido de PL/0; si no, devuelve false. Por ejemplo:
@@ -746,6 +761,12 @@
 ; false
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn identificador? [x]
+   (cond 
+   (palabra-reservada? x) false
+   (symbol? x) true 
+   (string? x) true
+   true false
+   )
 )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -760,6 +781,8 @@
 ; false
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn cadena? [x]
+   (let [sec_letras (seq x)]
+   (if (and (= (first sec_letras) '\') (= (last sec_letras) '\')) true false))
 )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -777,7 +800,24 @@
 ; user=> (ya-declarado-localmente? 'Y '[[0 3 5] [[X VAR 0] [Y VAR 1] [INICIAR PROCEDURE 1] [Y CONST 2] [ASIGNAR PROCEDURE 2] [Y CONST 6]]])
 ; true
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defn aux-contiene-variable [x v]
+   (if (and (some #(= x %) v) (not-any? #(= 'CONST %) v)) true false)
+)
+
+(defn aux-reducir-bool [x1 x2]
+   (cond
+     (and (not x1) (not x2)) false
+     (and x1 (not x2)) false
+     true true
+   )
+)
+
 (defn ya-declarado-localmente? [ident context]
+  (let [v (second context)]
+    (let [v_bool (map (partial aux-contiene-variable ident) v)]
+       (reduce aux-reducir-bool v_bool)
+    )
+  )
 )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
