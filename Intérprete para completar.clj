@@ -826,12 +826,46 @@
 ; contador de variables incrementado en 1. Por ejemplo:
 ; user=> (cargar-var-en-tabla '[nil () [VAR X] :error [[0] []] 0 [[JMP ?]]])
 ; [nil () [VAR X] :error [[0] []] 0 [[JMP ?]]]
+
 ; user=> (cargar-var-en-tabla '[nil () [VAR X] :sin-errores [[0] []] 0 [[JMP ?]]])
-; [nil () [VAR X] :sin-errores [[0] [[X VAR 0]]] 1 [[JMP ?]]]
+; [nil () [VAR X] :sin-errores [[0] [[X VAR 0]]] 1 [[JMP ?]] ]
+
 ; user=> (cargar-var-en-tabla '[nil () [VAR X , Y] :sin-errores [[0] [[X VAR 0]]] 1 [[JMP ?]]])
 ; [nil () [VAR X Y] :sin-errores [[0] [[X VAR 0] [Y VAR 1]]] 2 [[JMP ?]]]
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defn aux-convertir-var 
+  ([v]
+    (vec (aux-convertir-var v 0))
+  )
+  ([v i]
+    (if (= i (count v)) []
+      (let [r (aux-convertir-var v (inc i))]
+        (cons [(nth v i) 'VAR i] r)
+      )
+    )
+  )
+)
+
+(defn aux-variables [variables]
+  (map aux-convertir-var variables)
+)
+
+(defn aux-nuevo-ambiente-1 [amb]
+   (let [
+     v1 (first amb)
+     v2 (second amb)
+     v3 (nth amb 2)
+     v4 (nth amb 3)
+     v5 (first (nth amb 4))
+     v6 (aux-convertir-var (rest (nth amb 2)))
+     v7 (inc (nth amb 5))
+     v8 (nth amb 6)
+   ]
+      [v1 v2 v3 v4 [v5 v6] v7 v8])
+)
+
 (defn cargar-var-en-tabla [amb]
+  (if (not (= (nth amb 3) :sin-errores)) amb (aux-nuevo-ambiente amb))
 )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -843,7 +877,23 @@
 ; user=> (inicializar-contexto-local '[nil () [] :sin-errores [[0] [[X VAR 0] [Y VAR 1] [INI PROCEDURE 1]]] 2 [[JMP ?]]])
 ; [nil () [] :sin-errores [[0 3] [[X VAR 0] [Y VAR 1] [INI PROCEDURE 1]]] 2 [[JMP ?]]]
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defn aux-nuevo-ambiente-2 [amb]
+   (let [
+     len_subv_2 (count (nth (nth amb 4) 1))
+     v1 (first amb)
+     v2 (second amb)
+     v3 (nth amb 2)
+     v4 (nth amb 3)
+     v5 (conj (first (nth amb 4)) len_subv_2)
+     v6 (nth (nth amb 4) 1)
+     v7 (nth amb 5)
+     v8 (nth amb 6)
+   ]
+      [v1 v2 v3 v4 [v5 v6] v7 v8])
+)
+
 (defn inicializar-contexto-local [amb]
+   (if (not (= (nth amb 3) :sin-errores)) amb (aux-nuevo-ambiente-2 amb))
 )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -851,12 +901,15 @@
 ; parsear una declaracion de variables de PL/0. Si no es asi, se devuelve el ambiente intacto. De lo contrario, se
 ; devuelve un nuevo ambiente con la declaracion de variables parseada (ver EBNF), las variables declaradas en el
 ; contexto y el contador de variables actualizado. Por ejemplo:
+
 ; user=> (declaracion-var ['VAR (list 'X (symbol ",") 'Y (symbol ";") 'BEGIN 'X (symbol ":=") 7 (symbol ";") 'Y (symbol ":=") 12 (symbol ";") 'END (symbol ".")) [] :error [[0] []] 0 '[[JMP ?]]])
 ; [VAR (X , Y ; BEGIN X := 7 ; Y := 12 ; END .) [] :error [[0] []] 0 [[JMP ?]]]
+
 ; user=> (declaracion-var ['VAR (list 'X (symbol ",") 'Y (symbol ";") 'BEGIN 'X (symbol ":=") 7 (symbol ";") 'Y (symbol ":=") 12 (symbol ";") 'END (symbol ".")) [] :sin-errores [[0] []] 0 '[[JMP ?]]])
 ; [BEGIN (X := 7 ; Y := 12 ; END .) [VAR X , Y ;] :sin-errores [[0] [[X VAR 0] [Y VAR 1]]] 2 [[JMP ?]]]
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn declaracion-var [amb]
+
 )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
