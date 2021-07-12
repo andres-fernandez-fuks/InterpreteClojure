@@ -662,8 +662,7 @@
                       (recur cod mem (inc cont-prg) pila-dat pila-llam)))
           NL (do (prn) (recur cod mem (inc cont-prg) pila-dat pila-llam))
           POP (let [val (last (pila_dat)) pos (second fetched)]
-                   (recur cod (assoc mem pos val) (inc cont_prg) (vec (butlast pila-dat)) pila-llam)
-              )
+                   (recur cod (assoc mem pos val) (inc cont_prg) (vec (butlast pila-dat)) pila-llam))
           PFM (let [val (nth mem (second fetched))]
                    (recur cod (conj mem val) (inc cont_prg) pila-dat pila-lam))
           PFI (let [val (second fetched)]
@@ -744,7 +743,7 @@
 ; false
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn palabra-reservada? [x]
-   (let [palabras_reservadas ["CONST" "VAR" "PROCEDURE" "CALL" "BEGIN" "IF" "WHILE" "ODD"]]
+   (let [palabras_reservadas ["CONST" "VAR" "PROCEDURE" "CALL" "BEGIN" "IF" "WHILE" "ODD" "THEN" "DO"]]
       (if (some #(= (str x) %) palabras_reservadas) true false)
    )   
 ) 
@@ -865,7 +864,7 @@
 )
 
 (defn cargar-var-en-tabla [amb]
-  (if (not (= (nth amb 3) :sin-errores)) amb (aux-nuevo-ambiente amb))
+  (if (not (= (nth amb 3) :sin-errores)) amb (aux-nuevo-ambiente-1 amb))
 )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -908,8 +907,54 @@
 ; user=> (declaracion-var ['VAR (list 'X (symbol ",") 'Y (symbol ";") 'BEGIN 'X (symbol ":=") 7 (symbol ";") 'Y (symbol ":=") 12 (symbol ";") 'END (symbol ".")) [] :sin-errores [[0] []] 0 '[[JMP ?]]])
 ; [BEGIN (X := 7 ; Y := 12 ; END .) [VAR X , Y ;] :sin-errores [[0] [[X VAR 0] [Y VAR 1]]] 2 [[JMP ?]]]
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defn declaracion-var [amb]
+(defn aux-es-declaracion-de-var [amb]
+  (= (first amb) 'VAR)
+)
 
+(defn aux-extraer-vars [amb]
+  (let [
+    vect_total (second amb)
+    vect_red (take (.indexOf vect_total (symbol ";")) vect_total)
+  ]
+    (remove #(= (symbol ",") %) vect_red)
+  )
+)
+
+(defn aux-extraer-vector-de-vars [amb]
+  (let [
+    vect_total (second amb)
+    vect_red (take (inc (.indexOf vect_total (symbol ";"))) vect_total)
+  ]
+   (vec (cons (first amb) vect_red))
+  )
+)
+
+(defn aux-extraer-valores [amb]
+  (let [vect_total (second amb)]
+    (rest (drop (inc (.indexOf vect_total (symbol ";"))) vect_total))
+  )
+)
+
+(defn aux-nuevo-ambiente-3 [amb]
+   (let [
+     v1 (aux-extraer-valores amb)
+     v2 (aux-extraer-vector-de-vars amb)
+     v3 (nth amb 3)
+     v4 (first (nth amb 4))
+     vect_vars (aux-extraer-vars amb)
+     v5 (aux-convertir-var vect_vars)
+     v6 (+ (nth amb 5) (count vect_vars)) ; sacar_cant_variables
+     v7 (nth amb (- (count amb) 1))
+   ]
+    ['BEGIN v1 v2 v3 [v4 v5] v6 v7])
+)
+
+(defn declaracion-var [amb]
+  (cond 
+    (not (= (nth amb 3) :sin-errores)) amb
+    (not (aux-es-declaracion-de-var amb)) amb
+    true (aux-nuevo-ambiente-3 amb)
+  )
 )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -918,26 +963,100 @@
 ; nuevo ambiente con el signo unario parseado (ver EBNF). Por ejemplo:
 ; user=> (procesar-signo-unario ['+ (list 7 (symbol ";") 'Y ':= '- 12 (symbol ";") 'END (symbol ".")) ['VAR 'X (symbol ",") 'Y (symbol ";") 'BEGIN 'X (symbol ":=")] :error '[[0] [[X VAR 0] [Y VAR 1]]] 2 []])
 ; [+ (7 ; Y := - 12 ; END .) [VAR X , Y ; BEGIN X :=] :error [[0] [[X VAR 0] [Y VAR 1]]] 2 []]
+
 ; user=> (procesar-signo-unario [7 (list (symbol ";") 'Y ':= '- 12 (symbol ";") 'END (symbol ".")) ['VAR 'X (symbol ",") 'Y (symbol ";") 'BEGIN 'X (symbol ":=")] :sin-errores '[[0] [[X VAR 0] [Y VAR 1]]] 2 []])
 ; [7 (; Y := - 12 ; END .) [VAR X , Y ; BEGIN X :=] :sin-errores [[0] [[X VAR 0] [Y VAR 1]]] 2 []]
+
 ; user=> (procesar-signo-unario ['+ (list 7 (symbol ";") 'Y ':= '- 12 (symbol ";") 'END (symbol ".")) ['VAR 'X (symbol ",") 'Y (symbol ";") 'BEGIN 'X (symbol ":=")] :sin-errores '[[0] [[X VAR 0] [Y VAR 1]]] 2 []])
 ; [7 (; Y := - 12 ; END .) [VAR X , Y ; BEGIN X := +] :sin-errores [[0] [[X VAR 0] [Y VAR 1]]] 2 []]
+
 ; user=> (procesar-signo-unario ['- (list 7 (symbol ";") 'Y ':= '- 12 (symbol ";") 'END (symbol ".")) ['VAR 'X (symbol ",") 'Y (symbol ";") 'BEGIN 'X (symbol ":=")] :sin-errores '[[0] [[X VAR 0] [Y VAR 1]]] 2 []])
 ; [7 (; Y := - 12 ; END .) [VAR X , Y ; BEGIN X := -] :sin-errores [[0] [[X VAR 0] [Y VAR 1]]] 2 []]
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defn aux-es-signo-unario [sym]
+  (let [
+    es_signo_menos (= sym (symbol "-"))
+    es_signo_mas (= sym (symbol "+"))
+  ]
+    (or es_signo_menos es_signo_mas)
+  )
+)
+
+(defn aux-nuevo-ambiente-4 [amb]
+   (let [
+     v1 (first (second amb))
+     v2 (rest (second amb))
+     v3 (conj (nth amb 2) (first amb))
+     v4 (nth amb 3)
+     v5 (nth amb 4)
+     v6 (nth amb 5)
+     v7 (nth amb 6)
+   ]
+    [v1 v2 v3 v4 v5 v6 v7])
+)
+
 (defn procesar-signo-unario [amb]
+  (cond 
+    (not (= (nth amb 3) :sin-errores)) amb
+    (not (aux-es-signo-unario (first amb))) amb
+    true (aux-nuevo-ambiente-4 amb)
+  )
 )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Recibe un ambiente y, si su estado no es :sin-errores, lo devuelve intacto. De lo contrario, se devuelve un
 ; nuevo ambiente con el termino parseado (ver EBNF). Esta funcion no genera ninguna instruccion de la RI por si
 ; misma. Por ejemplo:
+
 ; user=> (termino ['X (list '* 2 'END (symbol ".")) ['VAR 'X (symbol ";") 'BEGIN 'X (symbol ":=")] :error '[[0] [[X VAR 0]]] 1 []])
 ; [X (* 2 END .) [VAR X ; BEGIN X :=] :error [[0] [[X VAR 0]]] 1 []]
+
 ; user=> (termino ['X (list '* 2 'END (symbol ".")) ['VAR 'X (symbol ";") 'BEGIN 'X (symbol ":=")] :sin-errores '[[0] [[X VAR 0]]] 1 []])
 ; [END (.) [VAR X ; BEGIN X := X * 2] :sin-errores [[0] [[X VAR 0]]] 1 [[PFM 0] [PFI 2] MUL]]
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defn aux-es-signo-unario [sym]
+  (let [
+    es_signo_menos (= sym (symbol "-"))
+    es_signo_mas (= sym (symbol "+"))
+  ]
+    (or es_signo_menos es_signo_mas)
+  )
+)
+
+(defn aux-armar-v1 [amb]
+  (let [vect_total (second amb)]
+    (rest (drop (.indexOf vect_total 'END) vect_total))
+  )
+)
+
+(defn aux-armar-vector-de-instr [v_ini fact tipo_op]
+  [['PFM v_ini] ['PFI fact] tipo_op]
+)
+
+(defn aux-reductora [v x]
+  (conj v x)
+)
+
+
+(defn aux-nuevo-ambiente-5 [amb]
+   (let [
+     v1 (aux-armar-v1 amb)
+     x (first amb)
+     op (first (second amb))
+     fact (second (second amb))
+     v2 (reduce aux-reductora[(nth amb 2) x op fact])
+     v3 (nth amb 3)
+     v4 (nth amb 4)
+     v5 (nth amb 5)
+     v_ini (last (last (second (nth amb 4))))
+     tipo_op (if (= op (symbol "*")) 'MUL 'DIV)
+     v6 (aux-armar-vector-de-instr v_ini fact tipo_op)
+   ]
+    ['END v1 v2 v3 v4 v5 v6])
+)
+
 (defn termino [amb]
+  (if (not (= (nth amb 3) :sin-errores)) amb (aux-nuevo-ambiente-5 amb))
 )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
