@@ -1267,8 +1267,42 @@
 ; user=> (aplicar-aritmetico + '[a b c])
 ; [a b c]
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defn aux-operador-no-valido [op]
+  (let [lista_ops [(str +) (str -) (str *) (str /)]]
+    (< (.indexOf lista_ops (str op)) 0)
+  )
+)
+
+(defn aux-tipo-dato-no-valido [pila]
+  (let [v1 (last pila) v2 (last (butlast pila))]
+    (not (and (integer? v1) (integer? v2)))
+  )
+)
+
+(defn aplicar-operacion [op v1 v2]
+  (if (= (str op) (str /))
+    (quot v1 v2)
+    (op v1 v2)
+  )
+)
+
+(defn aux-agregar-resultado [op pila]
+  (let [
+    v1 (last (butlast pila))
+    v2 (last pila)
+    resultado (aplicar-operacion op v1 v2)
+  ]
+    (conj (vec (drop-last 2 pila)) resultado)
+  )
+)
+
 (defn aplicar-aritmetico [op pila]
-   
+  (cond
+    (aux-operador-no-valido op) pila
+    (<= (count pila) 1) pila
+    (aux-tipo-dato-no-valido pila) pila
+    true (aux-agregar-resultado op pila)
+  )
 )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1291,7 +1325,29 @@
 ; user=> (aplicar-relacional <= '[a b c])
 ; [a b c]
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defn aux-operador-rel-no-valido [op]
+  (let [lista_ops [(str =) (str <) (str >) (str <=) (str >=) (str not=)]]
+    (< (.indexOf lista_ops (str op)) 0)
+  )
+)
+
+(defn aux-agregar-resultado-rel [op pila]
+  (let [
+    v1 (last (butlast pila))
+    v2 (last pila)
+    resultado (if (op v1 v2) 1 0)
+  ]
+    (conj (vec (drop-last 2 pila)) resultado)
+  )
+)
+
 (defn aplicar-relacional [op pila]
+  (cond
+    (aux-operador-rel-no-valido op) pila
+    (<= (count pila) 1) pila
+    (aux-tipo-dato-no-valido pila) pila
+    true (aux-agregar-resultado-rel op pila)
+  )
 )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1311,7 +1367,23 @@
 ; 0 nil
 ; nil
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defn dump-rec 
+  ([cod]
+    (dump-rec cod 0)
+  )
+  ([cod i]
+    (if (empty? cod)
+      nil
+      (do
+        (println i (first cod))
+        (dump-rec (rest cod) (inc i))
+      )
+    )  
+  )
+)
+
 (defn dump [cod]
+  (dump-rec cod)
 )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
