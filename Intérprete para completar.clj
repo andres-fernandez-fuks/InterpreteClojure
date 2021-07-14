@@ -1014,15 +1014,6 @@
 ; user=> (termino ['X (list '* 2 'END (symbol ".")) ['VAR 'X (symbol ";") 'BEGIN 'X (symbol ":=")] :sin-errores '[[0] [[X VAR 0]]] 1 []])
 ; [END (.) [VAR X ; BEGIN X := X * 2] :sin-errores [[0] [[X VAR 0]]] 1 [[PFM 0] [PFI 2] MUL]]
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defn aux-es-signo-unario [sym]
-  (let [
-    es_signo_menos (= sym (symbol "-"))
-    es_signo_mas (= sym (symbol "+"))
-  ]
-    (or es_signo_menos es_signo_mas)
-  )
-)
-
 (defn aux-armar-v1 [amb]
   (let [vect_total (second amb)]
     (rest (drop (.indexOf vect_total 'END) vect_total))
@@ -1063,14 +1054,192 @@
 ; Recibe un ambiente y, si su estado no es :sin-errores, lo devuelve intacto. De lo contrario, se devuelve un
 ; nuevo ambiente con la expresion parseada (ver EBNF). A esta funcion le cabe la responsabilidad de solicitar
 ; la generacion de la instruccion NEG de la RI (llamando a generar-signo), si corresponde. Por ejemplo:
+
 ; user=> (expresion ['- (list (symbol "(") 'X '* 2 '+ 1 (symbol ")") 'END (symbol ".")) ['VAR 'X (symbol ";") 'BEGIN 'X (symbol ":=")] :error '[[0] [[X VAR 0]]] 1 []])
 ; [- (( X * 2 + 1 ) END .) [VAR X ; BEGIN X :=] :error [[0] [[X VAR 0]]] 1 []]
+
 ; user=> (expresion ['+ (list (symbol "(") 'X '* 2 '+ 1 (symbol ")") 'END (symbol ".")) ['VAR 'X (symbol ";") 'BEGIN 'X (symbol ":=")] :sin-errores '[[0] [[X VAR 0]]] 1 []])
 ; [END (.) [VAR X ; BEGIN X := + ( X * 2 + 1 )] :sin-errores [[0] [[X VAR 0]]] 1 [[PFM 0] [PFI 2] MUL [PFI 1] ADD]]
+
 ; user=> (expresion ['- (list (symbol "(") 'X '* 2 '+ 1 (symbol ")") 'END (symbol ".")) ['VAR 'X (symbol ";") 'BEGIN 'X (symbol ":=")] :sin-errores '[[0] [[X VAR 0]]] 1 []])
 ; [END (.) [VAR X ; BEGIN X := - ( X * 2 + 1 )] :sin-errores [[0] [[X VAR 0]]] 1 [[PFM 0] [PFI 2] MUL [PFI 1] ADD NEG]]
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defn aux-es-signo-unario [sym]
+  (let [
+    es_signo_menos (= sym (symbol "-"))
+    es_signo_mas (= sym (symbol "+"))
+  ]
+    (or es_signo_menos es_signo_mas)
+  )
+)
+
+(defn generar-salida-unario [unario]
+  (if (= unario (symbol "+")) 'ADD 'SUB)
+)
+
+(defn aux-flatten [v]
+  ;(println v)
+  (if (empty? v) []
+    (let [
+      v_act (aux-flatten (rest v))
+      elem (first v)
+      ]
+      ;(println v_act)
+      (if (and (vector? elem) (vector? (first elem))) 
+        (into elem v_act)
+        (conj v_act elem) ; esto puede estar funcionando de suerte
+      )
+    )
+  )
+)
+
+(defn generar-inst [x]
+  (if (float? x)
+    ['PFM (int x)]
+    ['PFI x]
+  )
+)
+
+(defn generar-salida-op-multi [v]
+  (let [op (if (= (second v) (symbol "*")) 'MUL 'DIV)]
+        [(generar-inst (first v)) (generar-inst (last v)) op]
+  )
+)
+
+(defn generar-salida-operacion [v]
+  (cond
+  (= (count v) 1) ['PFI (first v)]
+  true (generar-salida-op-multi v)
+  )
+)
+
+(defn generar-salida-de-termino [termino]
+  (if (aux-es-signo-unario termino) (generar-salida-unario termino)
+    (generar-salida-operacion termino)
+  )
+)
+
+(defn aux-sacar-variables [v]
+  (let [vect_total (take (.indexOf v (symbol ";")) v)]
+    (remove #(= (symbol "VAR") %) vect_total)
+  )
+)
+
+(defn reemplazar-vars-por-valores [operaciones valores]
+  (if (empty? operaciones) []
+    (let [
+      ops_actualizado (reemplazar-vars-por-valores (rest operaciones) valores)
+      simb (first operaciones)
+    ]
+      (if (not (find valores simb)) (cons simb ops_actualizado)
+      (cons (float (get valores simb)) ops_actualizado)
+      )
+    )
+  )
+)
+
+(defn aux-vector-sin-unarios? [v]
+  (and (< (.indexOf v '-) 0) (< (.indexOf v '+) 0))
+)
+
+(defn aux-indice-prox-unario [v]
+  (let [
+    indice_mas (.indexOf v '+)
+    indice_menos (.indexOf v '-) 
+    ]
+    (cond
+      (< indice_mas 0) indice_menos
+      (< indice_menos 0) indice_mas
+      (< indice_mas indice_menos) indice_mas
+      true indice_menos
+    )
+  )
+)
+
+(defn aux-get-cant-elem [v]
+  (cond
+    (aux-vector-sin-unarios? v) (count v)
+    true (aux-indice-prox-unario v)
+  )
+)
+
+(defn dividir-en-terminos [operaciones]
+  (if (empty? operaciones) []
+    (let [
+      simb (first operaciones)
+    ]
+      (if (aux-es-signo-unario simb) (cons simb (dividir-en-terminos (rest operaciones))) 
+        (let [
+          cant_elem (aux-get-cant-elem operaciones)
+          nuevo_vector (take cant_elem operaciones)
+        ]
+          (cons nuevo_vector (dividir-en-terminos (drop cant_elem operaciones)))
+        )
+      )
+    )
+  )
+
+)
+
+(defn aux-negar-si-necesario [v negar]
+  (if negar
+    (conj v 'NEG)
+    v
+  )
+)
+
+(defn aux-quitar-parentesis [v]
+  (let [v_mod (remove #(= (symbol "(") %) v)]
+    (remove #(= (symbol ")") %) v_mod)
+  )
+)
+
+(defn aux-get-operaciones [v]
+  (take (.indexOf v 'END) v)
+)
+
+(defn aux-establecer-valores [vars valores]
+  (if (empty? vars) {}
+    (let [vars_actualizado (aux-establecer-valores (rest vars) (rest valores))]
+      (assoc vars_actualizado (first vars) (last (first valores)))
+    )
+  )
+)
+
+(defn aux-armar-v1 [amb]
+  (let [vect_total (second amb)]
+    (rest (drop (.indexOf vect_total 'END) vect_total))
+  )
+)
+
+(defn aux-armar-v2 [sym v1 v2]
+  (vec (flatten [v1 (cons sym v2)]))
+)
+
+(defn aux-nuevo-ambiente-6 [amb]
+   (let [
+     v1 (aux-armar-v1 amb)
+     operaciones (aux-get-operaciones (second amb))
+     v2 (aux-armar-v2 (first amb) (nth amb 2) operaciones)
+     operaciones (aux-quitar-parentesis operaciones)
+     variables (aux-sacar-variables (nth amb 2))
+     v3 (nth amb 3)
+     v4 (nth amb 4)
+     v5 (nth amb 5)
+     valores (aux-establecer-valores variables (second (nth amb 4)))
+     op_modif (reemplazar-vars-por-valores operaciones valores)
+     vector_op (dividir-en-terminos op_modif)
+     v6 (aux-flatten (vec (map generar-salida-de-termino vector_op)))
+     v6 (aux-negar-si-necesario v6 (= (first amb) (symbol "-")))
+     ;v_ini (last (last (second (nth amb 4))))
+     ;oper_mod (assoc (vec operaciones) 1 v_ini)
+     ;v6 (aux-construir-vect-final (assoc (vec operaciones) 1 v_ini))
+   ]
+    ['END v1 v2 v3 v4 v5 v6])
+)
+
 (defn expresion [amb]
+  (if (not (= (nth amb 3) :sin-errores)) amb (aux-nuevo-ambiente-6 amb))
 )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1099,6 +1268,7 @@
 ; [a b c]
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn aplicar-aritmetico [op pila]
+   
 )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
