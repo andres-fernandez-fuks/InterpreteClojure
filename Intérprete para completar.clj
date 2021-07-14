@@ -1453,48 +1453,119 @@
 ; Recibe un ambiente y la ubicacion de un JMP a corregir en el vector de bytecode. Si el estado no es :sin-errores,
 ; devuelve el ambiente intacto. De lo contrario, lo devuelve con el JMP corregido con el tamano del vector de
 ; bytecode. Por ejemplo:
+
 ; user=> (fixup ['WRITELN (list 'END (symbol ".")) [] :error [[0 3] []] 6 '[[JMP ?] [JMP ?] [CAL 1] RET]] 1)
 ; [WRITELN (END .) [] :sin-errores [[0 3] []] 6 [[JMP ?] [JMP ?] [CAL 1] RET]]
+
 ; user=> (fixup ['WRITELN (list 'END (symbol ".")) [] :sin-errores [[0 3] []] 6 '[[JMP ?] [JMP ?] [CAL 1] RET]] 1)
 ; [WRITELN (END .) [] :sin-errores [[0 3] []] 6 [[JMP ?] [JMP 4] [CAL 1] RET]]
+
 ; user=> (fixup ['WRITELN (list 'END (symbol ".")) [] :sin-errores [[0 3] []] 6 '[[JMP ?] [JMP 4] [CAL 1] RET [PFM 2] OUT NL RET]] 0)
 ; [WRITELN (END .) [] :sin-errores [[0 3] []] 6 [[JMP 8] [JMP 4] [CAL 1] RET [PFM 2] OUT NL RET]]
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defn aux-fixup-jump [amb ubi]
+  (let [
+    btc_vec (nth amb 6)
+    btc_size (count btc_vec)
+    btc_fixed (assoc btc_vec ubi ['JMP btc_size])
+    ]
+      (assoc amb 6 btc_fixed)
+    )
+)
+
 (defn fixup [amb ubi]
+   (if (not (= (nth amb 3) :sin-errores)) 
+    amb
+    (aux-fixup-jump amb ubi)
+   )
 )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Recibe un ambiente y un operador relacional de PL/0. Si el estado no es :sin-errores o si el operador no es
 ; valido, devuelve el ambiente intacto. De lo contrario, devuelve el ambiente con la instruccion de la RI
 ; correspondiente al operador relacional agregada en el vector de bytecode. Por ejemplo: 
+
 ; user=> (generar-operador-relacional ['WRITELN (list 'END (symbol ".")) [] :error [[0 3] []] 6 '[[JMP ?] [JMP ?] [CAL 1] RET]] '=)
 ; [WRITELN (END .) [] :error [[0 3] []] 6 [[JMP ?] [JMP ?] [CAL 1] RET]]
+
 ; user=> (generar-operador-relacional ['WRITELN (list 'END (symbol ".")) [] :sin-errores [[0 3] []] 6 '[[JMP ?] [JMP ?] [CAL 1] RET]] '+)
 ; [WRITELN (END .) [] :sin-errores [[0 3] []] 6 [[JMP ?] [JMP ?] [CAL 1] RET]]
+
 ; user=> (generar-operador-relacional ['WRITELN (list 'END (symbol ".")) [] :sin-errores [[0 3] []] 6 '[[JMP ?] [JMP ?] [CAL 1] RET]] '=)
 ; [WRITELN (END .) [] :sin-errores [[0 3] []] 6 [[JMP ?] [JMP ?] [CAL 1] RET EQ]]
+
 ; user=> (generar-operador-relacional ['WRITELN (list 'END (symbol ".")) [] :sin-errores [[0 3] []] 6 '[[JMP ?] [JMP ?] [CAL 1] RET]] '>=)
 ; [WRITELN (END .) [] :sin-errores [[0 3] []] 6 [[JMP ?] [JMP ?] [CAL 1] RET GTE]]
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defn aux-get-instr-de-operador [operador]
+  (case (str operador)
+    ("=") 'EQ
+    ("<") 'LT
+    (">") 'GT
+    ("<=") 'LTE
+    (">=") 'GTE
+    ("<>") 'NEQ
+  )
+)
+
+(defn modificar-amb [amb operador]
+  (let [op_inst (aux-get-instr-de-operador operador)]
+    (assoc amb 6 (conj (nth amb 6) op_inst))
+  )
+)
+
+(defn aux-operador-invalido [operador]
+  (let [lista_ops ['= '< '> '<= '>= (symbol "<>")]]
+    (< (.indexOf lista_ops operador) 0)
+  )
+)
+
+(defn aux-amb-con-errores [amb]
+  (not (= (nth amb 3) :sin-errores))
+)
+
 (defn generar-operador-relacional [amb operador]
+  (cond
+    (aux-amb-con-errores amb) amb
+    (aux-operador-invalido operador) amb
+    true (modificar-amb amb operador)
+  )
 )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Recibe un ambiente y un operador monadico de signo de PL/0. Si el estado no es :sin-errores o si el operador no es
 ; valido, devuelve el ambiente intacto. De lo contrario, devuelve el ambiente con la instruccion de la RI
 ; correspondiente al operador monadico de signo agregada en el vector de bytecode. Por ejemplo:
+
 ; user=> (generar-signo [nil () [] :error '[[0] [[X VAR 0]]] 1 '[MUL ADD]] '-)
 ; [nil () [] :error [[0] [[X VAR 0]]] 1 [MUL ADD]]
+
 ; user=> (generar-signo [nil () [] :error '[[0] [[X VAR 0]]] 1 '[MUL ADD]] '+)
 ; [nil () [] :error [[0] [[X VAR 0]]] 1 [MUL ADD]]
+
 ; user=> (generar-signo [nil () [] :sin-errores '[[0] [[X VAR 0]]] 1 '[MUL ADD]] '+)
 ; [nil () [] :sin-errores [[0] [[X VAR 0]]] 1 [MUL ADD]]
+
 ; user=> (generar-signo [nil () [] :sin-errores '[[0] [[X VAR 0]]] 1 '[MUL ADD]] '*)
 ; [nil () [] :sin-errores [[0] [[X VAR 0]]] 1 [MUL ADD]]
+
 ; user=> (generar-signo [nil () [] :sin-errores '[[0] [[X VAR 0]]] 1 '[MUL ADD]] '-)
 ; [nil () [] :sin-errores [[0] [[X VAR 0]]] 1 [MUL ADD NEG]]
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defn aux-signo-invalido [operador]
+  (not (= '- operador))
+)
+
+(defn aux-amb-con-errores [amb]
+  (not (= (nth amb 3) :sin-errores))
+)
+
 (defn generar-signo [amb signo]
+  (cond
+    (aux-amb-con-errores amb) amb
+    (aux-signo-invalido signo) amb
+    true (assoc amb 6 (conj (nth amb 6) 'NEG))
+  )
 )
 
 true
