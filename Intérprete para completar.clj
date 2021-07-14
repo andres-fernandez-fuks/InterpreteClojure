@@ -1391,19 +1391,30 @@
 ; instruccion agregada al final del vector de bytecode. Si recibe un ambiente, una instruccion de la RI y un valor,
 ; y si el estado es :sin-errores, devuelve el ambiente con un vector conteniendo la instruccion y el valor, agregado
 ; al final del vector de bytecode. De lo contrario, devuelve el ambiente intacto. Por ejemplo:
+
 ; user=> (generar '[nil () [VAR X] :sin-errores [[0] []] 0 [[JMP ?]]] 'HLT)
 ; [nil () [VAR X] :sin-errores [[0] []] 0 [[JMP ?] HLT]]
+
 ; user=> (generar '[nil () [VAR X] :sin-errores [[0] []] 0 [[JMP ?]]] 'PFM 0)
 ; [nil () [VAR X] :sin-errores [[0] []] 0 [[JMP ?] [PFM 0]]]
+
 ; user=> (generar '[nil () [VAR X] :error [[0] []] 0 [[JMP ?]]] 'HLT)
 ; [nil () [VAR X] :error [[0] []] 0 [[JMP ?]]]
+
 ; user=> (generar '[nil () [VAR X] :error [[0] []] 0 [[JMP ?]]] 'PFM 0)
 ; [nil () [VAR X] :error [[0] []] 0 [[JMP ?]]]
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn generar 
   ([amb instr]
+    (if (not (= (nth amb 3) :sin-errores)) amb
+      (assoc amb 6 (conj (nth amb 6) instr))  
+    )
   )
   ([amb instr val]
+    (if (not (= (nth amb 3) :sin-errores))
+      amb
+      (assoc amb 6 (conj (nth amb 6) [instr val])) 
+    )
   )
 )
 
@@ -1414,7 +1425,28 @@
 ; user=> (buscar-coincidencias '[nil () [CALL X] :sin-errores [[0 3] [[X VAR 0] [Y VAR 1] [A PROCEDURE 1] [X VAR 2] [Y VAR 3] [B PROCEDURE 2]]] 6 [[JMP ?] [JMP 4] [CAL 1] RET]])
 ; ([X VAR 0] [X VAR 2])
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defn aux-buscar-coincidencias-rec [simb v]
+  (if (empty? v)
+    []
+    (let [
+      v_act (aux-buscar-coincidencias-rec simb (rest v))
+      elem (first v)
+      ]
+      (if (= simb (first elem))
+        (cons elem v_act)
+        v_act
+      )
+    )
+  )
+)
+
 (defn buscar-coincidencias [amb]
+  (let [
+    simb (last (nth amb 2))
+    vect_llamadas (second (nth amb 4)) 
+    ]
+    (aux-buscar-coincidencias-rec simb vect_llamadas )
+  )
 )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
