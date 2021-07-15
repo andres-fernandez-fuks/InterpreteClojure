@@ -2,6 +2,13 @@
   (:gen-class))
 
 (declare driver-loop)
+
+(defn -main
+  "I don't do a whole lot ... yet."
+  [& args]
+  (driver-loop)
+)
+
 (declare escanear-arch)
 (declare a-mayusculas-salvo-strings)
 (declare listar)
@@ -783,8 +790,10 @@
 ; false
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn cadena? [x]
-   (let [sec_letras (seq x)]
-   (if (and (= (first sec_letras) '\') (= (last sec_letras) '\')) true false))
+  (if (not= (type x) java.lang.String) false
+    (let [sec_letras (seq x)]
+    (if (and (= (first sec_letras) '\') (= (last sec_letras) '\')) true false))
+  )
 )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -802,23 +811,24 @@
 ; user=> (ya-declarado-localmente? 'Y '[[0 3 5] [[X VAR 0] [Y VAR 1] [INICIAR PROCEDURE 1] [Y CONST 2] [ASIGNAR PROCEDURE 2] [Y CONST 6]]])
 ; true
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defn aux-contiene-variable [x v]
-   (if (and (some #(= x %) v) (not-any? #(= 'CONST %) v)) true false)
+(defn aux-contiene-ident? [ident v]
+  (>= (.indexOf v ident) 0)
 )
 
-(defn aux-reducir-bool [x1 x2]
-   (cond
-     (and (not x1) (not x2)) false
-     (and x1 (not x2)) false
-     true true
-   )
+(defn aux-buscar-ident [ident v]
+  (def v_bool (map (partial aux-contiene-ident? ident) v))
+  (not-every? false? v_bool)
 )
+
 
 (defn ya-declarado-localmente? [ident context]
-  (let [v (second context)]
-    (let [v_bool (map (partial aux-contiene-variable ident) v)]
-       (reduce aux-reducir-bool v_bool)
-    )
+  (let [
+    vect_pos (first context)
+    ult_pos (last vect_pos)
+    vect_declar (second context)
+    vect_declar_red (drop ult_pos vect_declar)
+  ]
+    (aux-buscar-ident ident vect_declar_red)
   )
 )
 
@@ -830,7 +840,7 @@
 ; [nil () [VAR X] :error [[0] []] 0 [[JMP ?]]]
 
 ; user=> (cargar-var-en-tabla '[nil () [VAR X] :sin-errores [[0] []] 0 [[JMP ?]]])
-; [nil () [VAR X] :sin-errores [[0] [[X VAR 0]]] 1 [[JMP ?]] ]
+; [nil () [VAR X] :sin-errores [[0] [[X VAR 0]]] 1 [[JMP ?]]]
 
 ; user=> (cargar-var-en-tabla '[nil () [VAR X , Y] :sin-errores [[0] [[X VAR 0]]] 1 [[JMP ?]]])
 ; [nil () [VAR X Y] :sin-errores [[0] [[X VAR 0] [Y VAR 1]]] 2 [[JMP ?]]]
