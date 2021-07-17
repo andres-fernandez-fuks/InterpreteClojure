@@ -769,11 +769,48 @@
 ; user=> (identificador? 'CALL)
 ; false
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defn identificador? [x]
+(defn aux-es-numero? [c]
+	(and (>= (int c) (int \0)) (<= (int c) (int \9)))
+)
+
+(defn aux-es-letra? [c]
+	(cond 
+		(and (>= (int c) (int \a)) (<= (int c) (int \z))) true
+		(and (>= (int c) (int \A)) (<= (int c) (int \Z))) true
+		true false
+	)
+)
+
+(defn aux-es-caracter-valido? [c]
+	(or (aux-es-letra? c) (aux-es-numero? c))
+)
+
+(defn aux-verificar-caracteres-validos [v_char]
+	(if (empty? v_char)
+		true
+		(let [v_bool (map aux-es-caracter-valido? v_char)]
+			(every? true? v_bool)
+		)
+	)
+)
+
+(defn aux-verificar-primera-letra [s]
+		(cond 
+		(= s "") false
+		(aux-es-letra? (first s)) true
+		true false
+	)	
+)
+
+(defn aux-verificar-ident-valido [s]
+	(and (aux-verificar-primera-letra s) (aux-verificar-caracteres-validos (rest s)))
+)
+
+(defn identificador? [s]
    (cond 
-      (palabra-reservada? x) false
-      (symbol? x) true 
-      (string? x) true
+      (palabra-reservada? s) false
+      (symbol? s) (aux-verificar-ident-valido (str s))
+      (string? s) (aux-verificar-ident-valido s) 
       true false
    )
 )
@@ -851,8 +888,8 @@
   )
   ([v i]
     (if (= i (count v)) []
-      (let [r (aux-convertir-var v (inc i))]
-        (cons [(nth v i) 'VAR i] r)
+      (let [v_act (aux-convertir-var v (inc i))]
+        (cons [(nth v i) 'VAR i] v_act)
       )
     )
   )
@@ -862,22 +899,22 @@
   (map aux-convertir-var variables)
 )
 
-(defn aux-nuevo-ambiente-1 [amb]
+(defn aux-nuevo-ambiente-cargar-var [amb]
    (let [
-     v1 (first amb)
-     v2 (second amb)
-     v3 (nth amb 2)
-     v4 (nth amb 3)
-     v5 (first (nth amb 4))
-     v6 (aux-convertir-var (rest (nth amb 2)))
-     v7 (inc (nth amb 5))
-     v8 (nth amb 6)
+     v1 (simb-actual amb)
+     v2 (simb-no-parseados-aun amb)
+     v3 (simb-ya-parseados amb)
+     v4 (estado amb)
+     v5 (first (contexto amb))
+     v6 (aux-convertir-var (rest (simb-ya-parseados amb)))
+     v7 (inc (prox-var amb))
+     v8 (bytecode amb)
    ]
       [v1 v2 v3 v4 [v5 v6] v7 v8])
 )
 
 (defn cargar-var-en-tabla [amb]
-  (if (not (= (nth amb 3) :sin-errores)) amb (aux-nuevo-ambiente-1 amb))
+  (if (not (= (estado amb) :sin-errores)) amb (aux-nuevo-ambiente-cargar-var amb))
 )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -893,21 +930,21 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn aux-nuevo-ambiente-2 [amb]
    (let [
-     len_subv_2 (count (nth (nth amb 4) 1))
-     v1 (first amb)
-     v2 (second amb)
-     v3 (nth amb 2)
-     v4 (nth amb 3)
-     v5 (conj (first (nth amb 4)) len_subv_2)
-     v6 (nth (nth amb 4) 1)
-     v7 (nth amb 5)
-     v8 (nth amb 6)
+     len_subv_2 (count (nth (contexto amb) 1))
+     v1 (simb-actual amb)
+     v2 (simb-no-parseados-aun amb)
+     v3 (simb-ya-parseados amb)
+     v4 (estado amb)
+     v5 (conj (first (contexto amb)) len_subv_2)
+     v6 (nth (contexto amb) 1)
+     v7 (prox-var amb)
+     v8 (bytecode amb)
    ]
       [v1 v2 v3 v4 [v5 v6] v7 v8])
 )
 
 (defn inicializar-contexto-local [amb]
-   (if (not (= (nth amb 3) :sin-errores)) amb (aux-nuevo-ambiente-2 amb))
+   (if (not (= (estado amb) :sin-errores)) amb (aux-nuevo-ambiente-2 amb))
 )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -923,12 +960,12 @@
 ; [BEGIN (X := 7 ; Y := 12 ; END .) [VAR X , Y ;] :sin-errores [[0] [[X VAR 0] [Y VAR 1]]] 2 [[JMP ?]]]
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn aux-es-declaracion-de-var [amb]
-  (= (first amb) 'VAR)
+  (= (simb-actual amb) 'VAR)
 )
 
 (defn aux-extraer-vars [amb]
   (let [
-    vect_total (second amb)
+    vect_total (simb-no-parseados-aun amb)
     vect_red (take (.indexOf vect_total (symbol ";")) vect_total)
   ]
     (remove #(= (symbol ",") %) vect_red)
@@ -937,15 +974,15 @@
 
 (defn aux-extraer-vector-de-vars [amb]
   (let [
-    vect_total (second amb)
+    vect_total (simb-no-parseados-aun amb)
     vect_red (take (inc (.indexOf vect_total (symbol ";"))) vect_total)
   ]
-   (vec (cons (first amb) vect_red))
+   (vec (cons (simb-actual amb) vect_red))
   )
 )
 
 (defn aux-extraer-valores [amb]
-  (let [vect_total (second amb)]
+  (let [vect_total (simb-no-parseados-aun amb)]
     (rest (drop (inc (.indexOf vect_total (symbol ";"))) vect_total))
   )
 )
@@ -954,11 +991,11 @@
    (let [
      v1 (aux-extraer-valores amb)
      v2 (aux-extraer-vector-de-vars amb)
-     v3 (nth amb 3)
-     v4 (first (nth amb 4))
+     v3 (estado amb)
+     v4 (first (contexto amb))
      vect_vars (aux-extraer-vars amb)
      v5 (aux-convertir-var vect_vars)
-     v6 (+ (nth amb 5) (count vect_vars)) ; sacar_cant_variables
+     v6 (+ (prox-var amb) (count vect_vars)) ; sacar_cant_variables
      v7 (nth amb (- (count amb) 1))
    ]
     ['BEGIN v1 v2 v3 [v4 v5] v6 v7])
@@ -966,7 +1003,7 @@
 
 (defn declaracion-var [amb]
   (cond 
-    (not (= (nth amb 3) :sin-errores)) amb
+    (not (= (estado amb) :sin-errores)) amb
     (not (aux-es-declaracion-de-var amb)) amb
     true (aux-nuevo-ambiente-3 amb)
   )
@@ -1000,21 +1037,21 @@
 
 (defn aux-nuevo-ambiente-4 [amb]
    (let [
-     v1 (first (second amb))
-     v2 (rest (second amb))
-     v3 (conj (nth amb 2) (first amb))
-     v4 (nth amb 3)
-     v5 (nth amb 4)
-     v6 (nth amb 5)
-     v7 (nth amb 6)
+     v1 (first (simb-no-parseados-aun amb))
+     v2 (rest (simb-no-parseados-aun amb))
+     v3 (conj (simb-ya-parseados amb) (simb-actual amb))
+     v4 (estado amb)
+     v5 (contexto amb)
+     v6 (prox-var amb)
+     v7 (bytecode amb)
    ]
     [v1 v2 v3 v4 v5 v6 v7])
 )
 
 (defn procesar-signo-unario [amb]
   (cond 
-    (not (= (nth amb 3) :sin-errores)) amb
-    (not (aux-es-signo-unario (first amb))) amb
+    (not (= (estado amb) :sin-errores)) amb
+    (not (aux-es-signo-unario (simb-actual amb))) amb
     true (aux-nuevo-ambiente-4 amb)
   )
 )
@@ -1032,7 +1069,7 @@
 ; [END (.) [VAR X ; BEGIN X := X * 2] :sin-errores [[0] [[X VAR 0]]] 1 [[PFM 0] [PFI 2] MUL]]
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn aux-armar-v1 [amb]
-  (let [vect_total (second amb)]
+  (let [vect_total (simb-no-parseados-aun amb)]
     (rest (drop (.indexOf vect_total 'END) vect_total))
   )
 )
@@ -1049,14 +1086,14 @@
 (defn aux-nuevo-ambiente-5 [amb]
    (let [
      v1 (aux-armar-v1 amb)
-     x (first amb)
-     op (first (second amb))
-     fact (second (second amb))
-     v2 (reduce aux-reductora[(nth amb 2) x op fact])
-     v3 (nth amb 3)
-     v4 (nth amb 4)
-     v5 (nth amb 5)
-     v_ini (last (last (second (nth amb 4))))
+     x (simb-actual amb)
+     op (first (simb-no-parseados-aun amb))
+     fact (second (simb-no-parseados-aun amb))
+     v2 (reduce aux-reductora[(simb-ya-parseados amb) x op fact])
+     v3 (estado amb)
+     v4 (contexto amb)
+     v5 (prox-var amb)
+     v_ini (last (last (second (contexto amb))))
      tipo_op (if (= op (symbol "*")) 'MUL 'DIV)
      v6 (aux-armar-vector-de-instr v_ini fact tipo_op)
    ]
@@ -1064,7 +1101,7 @@
 )
 
 (defn termino [amb]
-  (if (not (= (nth amb 3) :sin-errores)) amb (aux-nuevo-ambiente-5 amb))
+  (if (not (= (estado amb) :sin-errores)) amb (aux-nuevo-ambiente-5 amb))
 )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1224,7 +1261,7 @@
 )
 
 (defn aux-armar-v1 [amb]
-  (let [vect_total (second amb)]
+  (let [vect_total (simb-no-parseados-aun amb)]
     (rest (drop (.indexOf vect_total 'END) vect_total))
   )
 )
@@ -1236,19 +1273,19 @@
 (defn aux-nuevo-ambiente-6 [amb]
    (let [
      v1 (aux-armar-v1 amb)
-     operaciones (aux-get-operaciones (second amb))
-     v2 (aux-armar-v2 (first amb) (nth amb 2) operaciones)
+     operaciones (aux-get-operaciones (simb-no-parseados-aun amb))
+     v2 (aux-armar-v2 (simb-actual amb) (simb-ya-parseados amb) operaciones)
      operaciones (aux-quitar-parentesis operaciones)
-     variables (aux-sacar-variables (nth amb 2))
-     v3 (nth amb 3)
-     v4 (nth amb 4)
-     v5 (nth amb 5)
-     valores (aux-establecer-valores variables (second (nth amb 4)))
+     variables (aux-sacar-variables (simb-ya-parseados amb))
+     v3 (estado amb)
+     v4 (contexto amb)
+     v5 (prox-var amb)
+     valores (aux-establecer-valores variables (second (contexto amb)))
      op_modif (reemplazar-vars-por-valores operaciones valores)
      vector_op (dividir-en-terminos op_modif)
      v6 (aux-flatten (vec (map generar-salida-de-termino vector_op)))
-     v6 (aux-negar-si-necesario v6 (= (first amb) (symbol "-")))
-     ;v_ini (last (last (second (nth amb 4))))
+     v6 (aux-negar-si-necesario v6 (= (simb-actual amb) (symbol "-")))
+     ;v_ini (last (last (second (contexto amb))))
      ;oper_mod (assoc (vec operaciones) 1 v_ini)
      ;v6 (aux-construir-vect-final (assoc (vec operaciones) 1 v_ini))
    ]
@@ -1256,7 +1293,7 @@
 )
 
 (defn expresion [amb]
-  (if (not (= (nth amb 3) :sin-errores)) amb (aux-nuevo-ambiente-6 amb))
+  (if (not (= (estado amb) :sin-errores)) amb (aux-nuevo-ambiente-6 amb))
 )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1423,14 +1460,14 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn generar 
   ([amb instr]
-    (if (not (= (nth amb 3) :sin-errores)) amb
-      (assoc amb 6 (conj (nth amb 6) instr))  
+    (if (not (= (estado amb) :sin-errores)) amb
+      (assoc amb 6 (conj (bytecode amb) instr))  
     )
   )
   ([amb instr val]
-    (if (not (= (nth amb 3) :sin-errores))
+    (if (not (= (estado amb) :sin-errores))
       amb
-      (assoc amb 6 (conj (nth amb 6) [instr val])) 
+      (assoc amb 6 (conj (bytecode amb) [instr val])) 
     )
   )
 )
@@ -1459,8 +1496,8 @@
 
 (defn buscar-coincidencias [amb]
   (let [
-    simb (last (nth amb 2))
-    vect_llamadas (second (nth amb 4)) 
+    simb (last (simb-ya-parseados amb))
+    vect_llamadas (second (contexto amb)) 
     ]
     (aux-buscar-coincidencias-rec simb vect_llamadas )
   )
@@ -1472,7 +1509,7 @@
 ; bytecode. Por ejemplo:
 
 ; user=> (fixup ['WRITELN (list 'END (symbol ".")) [] :error [[0 3] []] 6 '[[JMP ?] [JMP ?] [CAL 1] RET]] 1)
-; [WRITELN (END .) [] :sin-errores [[0 3] []] 6 [[JMP ?] [JMP ?] [CAL 1] RET]]
+; [WRITELN (END .) [] :error [[0 3] []] 6 [[JMP ?] [JMP ?] [CAL 1] RET]]
 
 ; user=> (fixup ['WRITELN (list 'END (symbol ".")) [] :sin-errores [[0 3] []] 6 '[[JMP ?] [JMP ?] [CAL 1] RET]] 1)
 ; [WRITELN (END .) [] :sin-errores [[0 3] []] 6 [[JMP ?] [JMP 4] [CAL 1] RET]]
@@ -1482,7 +1519,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn aux-fixup-jump [amb ubi]
   (let [
-    btc_vec (nth amb 6)
+    btc_vec (bytecode amb)
     btc_size (count btc_vec)
     btc_fixed (assoc btc_vec ubi ['JMP btc_size])
     ]
@@ -1491,7 +1528,7 @@
 )
 
 (defn fixup [amb ubi]
-   (if (not (= (nth amb 3) :sin-errores)) 
+   (if (not (= (estado amb) :sin-errores)) 
     amb
     (aux-fixup-jump amb ubi)
    )
@@ -1527,7 +1564,7 @@
 
 (defn modificar-amb [amb operador]
   (let [op_inst (aux-get-instr-de-operador operador)]
-    (assoc amb 6 (conj (nth amb 6) op_inst))
+    (assoc amb 6 (conj (bytecode amb) op_inst))
   )
 )
 
@@ -1538,7 +1575,7 @@
 )
 
 (defn aux-amb-con-errores [amb]
-  (not (= (nth amb 3) :sin-errores))
+  (not (= (estado amb) :sin-errores))
 )
 
 (defn generar-operador-relacional [amb operador]
@@ -1574,14 +1611,14 @@
 )
 
 (defn aux-amb-con-errores [amb]
-  (not (= (nth amb 3) :sin-errores))
+  (not (= (estado amb) :sin-errores))
 )
 
 (defn generar-signo [amb signo]
   (cond
     (aux-amb-con-errores amb) amb
     (aux-signo-invalido signo) amb
-    true (assoc amb 6 (conj (nth amb 6) 'NEG))
+    true (assoc amb 6 (conj (bytecode amb) 'NEG))
   )
 )
 
