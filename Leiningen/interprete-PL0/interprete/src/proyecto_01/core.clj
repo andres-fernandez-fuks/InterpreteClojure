@@ -71,10 +71,10 @@
 (declare aplicar-relacional)
 (declare dump)
 
-; (defn spy
-;   ([x] (do (prn x) x))
-;   ([msg x] (do (print msg) (print ": ") (prn x) x))
-; )
+(defn spy
+	([x] (do (prn x) x))
+	([msg x] (do (print msg) (print ": ") (prn x) x))
+)
 
 (defn driver-loop
    ([]
@@ -659,7 +659,14 @@
 (defn interpretar [cod mem cont-prg pila-dat pila-llam]
   (let [fetched (cod cont-prg),
         opcode (if (symbol? fetched) fetched (first fetched))]
+       ;(spy "pila" pila-dat)
+        ;(spy "opcode" opcode)
+        ;(if (not (= (type fetched) clojure.lang.Symbol))
+        ;(spy "val" (second fetched))
+        	;nil
+        ;)
        (case opcode
+       		TEST [cod mem cont-prg pila-dat pila-llam]
           HLT nil
           IN (let [entr (try (Integer/parseInt (read-line)) (catch Exception e ""))]
                   (if (integer? entr)
@@ -671,44 +678,34 @@
                   (do (print (apply str (butlast (rest (str (second fetched)))))) (flush)
                       (recur cod mem (inc cont-prg) pila-dat pila-llam)))
           NL (do (prn) (recur cod mem (inc cont-prg) pila-dat pila-llam))
-          POP (let [val (last (pila-dat)) pos (second fetched)]
+          POP (let [val (last pila-dat) pos (second fetched)]
                    (recur cod (assoc mem pos val) (inc cont-prg) (vec (butlast pila-dat)) pila-llam))
           PFM (let [val (nth mem (second fetched))]
-                   (recur cod (conj mem val) (inc cont-prg) pila-dat pila-llam))
+                   (recur cod mem (inc cont-prg) (conj pila-dat val) pila-llam))
           PFI (let [val (second fetched)]
-                   (recur cod (conj mem val) (inc cont-prg) pila-dat pila-llam))
-          ADD (let [val1 (last pila-dat) val2 (last (butlast pila-dat))]
-                   (recur cod mem (inc cont-prg) (vec (cons (+ val1 val2) pila-dat)) pila-llam))
-          SUB (let [val1 (last pila-dat) val2 (last (butlast pila-dat))]
-                   (recur cod mem (inc cont-prg) (vec (cons (- val1 val2) pila-dat)) pila-llam))
-          MUL (let [val1 (last pila-dat) val2 (last (butlast pila-dat))]
-                   (recur cod mem (inc cont-prg) (vec (cons (* val1 val2) pila-dat)) pila-llam))
-          DIV (let [val1 (last pila-dat) val2 (last (butlast pila-dat))]
-                   (recur cod mem (inc cont-prg) (vec (cons (/ val1 val2) pila-dat)) pila-llam))
-          EQ (let [val1 (last pila-dat) val2 (last (butlast pila-dat))]
-                   (recur cod mem (inc cont-prg) (vec (cons (if (= val1 val2) 1 0) pila-dat)) pila-llam))
-          NEQ (let [val1 (last pila-dat) val2 (last (butlast pila-dat))]
-                   (recur cod mem (inc cont-prg) (vec (cons (if (= val1 val2) 0 1) pila-dat)) pila-llam))
-          GT (let [val1 (last pila-dat) val2 (last (butlast pila-dat))]
-                   (recur cod mem (inc cont-prg) (vec (cons (if (> val1 val2) 0 1) pila-dat)) pila-llam))
-          GTE (let [val1 (last pila-dat) val2 (last (butlast pila-dat))]
-                   (recur cod mem (inc cont-prg) (vec (cons (if (>= val1 val2) 0 1) pila-dat)) pila-llam))
-          LT (let [val1 (last pila-dat) val2 (last (butlast pila-dat))]
-                   (recur cod mem (inc cont-prg) (vec (cons (if (< val1 val2) 0 1) pila-dat)) pila-llam))
-          LTE (let [val1 (last pila-dat) val2 (last (butlast pila-dat))]
-                   (recur cod mem (inc cont-prg) (vec (cons (if (<= val1 val2) 0 1) pila-dat)) pila-llam))
+                   (recur cod mem (inc cont-prg) (conj pila-dat val) pila-llam))
+          ADD (recur cod mem (inc cont-prg) (aplicar-aritmetico + pila-dat) pila-llam)
+          SUB (recur cod mem (inc cont-prg) (aplicar-aritmetico - pila-dat) pila-llam)
+          MUL (recur cod mem (inc cont-prg) (aplicar-aritmetico * pila-dat) pila-llam)
+          DIV (recur cod mem (inc cont-prg) (aplicar-aritmetico / pila-dat) pila-llam)
+          EQ 	(recur cod mem (inc cont-prg) (aplicar-relacional = pila-dat) pila-llam)
+          NEQ (recur cod mem (inc cont-prg) (aplicar-relacional not= pila-dat) pila-llam)
+          GT  (recur cod mem (inc cont-prg) (aplicar-relacional > pila-dat) pila-llam)
+          GTE (recur cod mem (inc cont-prg) (aplicar-relacional >= pila-dat) pila-llam)
+          LT 	(recur cod mem (inc cont-prg) (aplicar-relacional < pila-dat) pila-llam)
+          LTE (recur cod mem (inc cont-prg) (aplicar-relacional <= pila-dat) pila-llam)
           NEG (let [val (last pila-dat)]
-                   (recur cod mem (inc cont-prg) (vec (cons (- val) pila-dat)) pila-llam))
-          ODD (let [val1 (last pila-dat) val2 (last (butlast pila-dat))]
-                   (recur cod mem (inc cont-prg) (vec (cons (if (<= val1 val2) 0 1) pila-dat)) pila-llam))
+                   (recur cod mem (inc cont-prg)  (conj (vec (butlast pila-dat)) (- val)) pila-llam))
+          ODD (let [val (last pila-dat)]
+                   (recur cod mem (inc cont-prg) (conj (vec (butlast pila-dat)) (if (odd? val) 1 0)) pila-llam))
           JMP (let [val (second fetched)]
                    (recur cod mem val pila-dat pila-llam))
           JC (let [val (if (= (last pila-dat) 0) (inc cont-prg) (second fetched))]
-                   (recur cod mem val (butlast pila-dat) pila-llam))
+                   (recur cod mem val (vec (butlast pila-dat)) pila-llam))
           CAL (let [val (second fetched)]
                    (recur cod mem val pila-dat (conj pila-llam (inc cont-prg))))
           RET (let [val (last pila-llam)]
-                   (recur cod mem val pila-dat (butlast pila-llam)))
+                   (recur cod mem val pila-dat (vec (butlast pila-llam))))
        )
   )
 )
@@ -725,6 +722,7 @@
 ; user=> (a-mayusculas-salvo-strings "  writeln ('Se ingresa un valor, se muestra su doble.');")
 ; "  WRITELN ('Se ingresa un valor, se muestra su doble.');"
  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defn a-mayusculas-salvo-strings 
   ([s]
     (let [sec_letras (seq s)]
@@ -751,9 +749,10 @@
 ; false
 ; user=> (palabra-reservada? "ASIGNAR")
 ; false
+;CONST|VAR|PROCEDURE|CALL|BEGIN|END|IF|THEN|WHILE|DO|ODD|READLN|WRITELN|WRITE
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn palabra-reservada? [x]
-   (let [palabras_reservadas ["CONST" "VAR" "PROCEDURE" "CALL" "BEGIN" "IF" "WHILE" "ODD" "THEN" "DO"]]
+   (let [palabras_reservadas ["CONST" "VAR" "PROCEDURE" "CALL" "BEGIN" "END" "IF" "THEN" "WHILE" "DO" "ODD" "READLN" "WRITELN" "WRITE"]]
       (if (some #(= (str x) %) palabras_reservadas) true false)
    )   
 ) 
@@ -827,10 +826,8 @@
 ; false
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn cadena? [x]
-  (if (not= (type x) java.lang.String) false
-    (let [sec_letras (seq x)]
-    (if (and (= (first sec_letras) '\') (= (last sec_letras) '\')) true false))
-  )
+  (let [sec_letras (seq (str x))]
+  (if (and (= (first sec_letras) '\') (= (last sec_letras) '\')) true false))
 )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1244,7 +1241,6 @@
 	)
 )
 
-
 (defn aux-buscar-coincidencias-rec [simb v]
   (if (empty? v)
     '()
@@ -1261,13 +1257,11 @@
 )
 
 (defn buscar-coincidencias [amb]
-	(println amb)
   (let [
     ;simb (aux-get-ultimo-simbolo (simb-ya-parseados amb) nil)
     simb (last (simb-ya-parseados amb))
     vect_llamadas (second (contexto amb)) 
     ]
-    (println simb)
     (aux-buscar-coincidencias-rec simb vect_llamadas )
   )
 )
@@ -1375,8 +1369,28 @@
 ; user=> (generar-signo [nil () [] :sin-errores '[[0] [[X VAR 0]]] 1 '[MUL ADD]] '-)
 ; [nil () [] :sin-errores [[0] [[X VAR 0]]] 1 [MUL ADD NEG]]
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defn aux-signo-invalido [operador]
-  (not (= '- operador))
+(defn aux-generar-instr [signo]
+	(case (str signo)
+		("+") 'ADD
+		("-") 'NEG
+		("*") 'MUL
+		("/") 'DIV
+	)
+)
+
+(defn aux-agregar-instr-si-no-repetida [signo bytecode]
+	(let [instr (aux-generar-instr signo)]
+		(if (< (.indexOf bytecode instr) 0)
+			(conj bytecode instr)
+			bytecode
+		)
+	)
+)
+
+(defn aux-signo-invalido [op]
+  (let [signos ["+" "-" "*" "/"]]
+  	(< (.indexOf signos (str op)) 0)
+  )
 )
 
 (defn aux-amb-con-errores [amb]
@@ -1387,7 +1401,7 @@
   (cond
     (aux-amb-con-errores amb) amb
     (aux-signo-invalido signo) amb
-    true (assoc amb 6 (conj (bytecode amb) 'NEG))
+    true (assoc amb 6 (aux-agregar-instr-si-no-repetida signo (bytecode amb)))
   )
 )
 
