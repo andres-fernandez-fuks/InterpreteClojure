@@ -666,7 +666,6 @@
         	;nil
         ;)
        (case opcode
-       		TEST [cod mem cont-prg pila-dat pila-llam]
           HLT nil
           IN (let [entr (try (Integer/parseInt (read-line)) (catch Exception e ""))]
                   (if (integer? entr)
