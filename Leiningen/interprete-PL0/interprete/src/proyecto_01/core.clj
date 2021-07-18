@@ -4,7 +4,6 @@
 (declare driver-loop)
 
 (defn -main
-  "I don't do a whole lot ... yet."
   [& args]
   (driver-loop)
 )
@@ -883,39 +882,19 @@
 ; user=> (cargar-var-en-tabla '[nil () [VAR X , Y] :sin-errores [[0] [[X VAR 0]]] 1 [[JMP ?]]])
 ; [nil () [VAR X Y] :sin-errores [[0] [[X VAR 0] [Y VAR 1]]] 2 [[JMP ?]]]
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defn aux-convertir-var 
-  ([v]
-    (vec (aux-convertir-var v 0))
+(defn aux-cargar-var [amb]
+  (let [
+    terna [(last (simb-ya-parseados amb)) 'VAR (prox-var amb)]
+    amb_con_terna (assoc amb 4 [((contexto amb) 0) (conj ((contexto amb) 1) terna)])
+  ]
+    (assoc amb_con_terna 5 (inc (prox-var amb_con_terna)))
   )
-  ([v i]
-    (if (= i (count v)) []
-      (let [v_act (aux-convertir-var v (inc i))]
-        (cons [(nth v i) 'VAR i] v_act)
-      )
-    )
-  )
-)
-
-(defn aux-variables [variables]
-  (map aux-convertir-var variables)
-)
-
-(defn aux-nuevo-ambiente-cargar-var [amb]
-   (let [
-     v1 (simb-actual amb)
-     v2 (simb-no-parseados-aun amb)
-     v3 (simb-ya-parseados amb)
-     v4 (estado amb)
-     v5 (first (contexto amb))
-     v6 (aux-convertir-var (rest (simb-ya-parseados amb)))
-     v7 (inc (prox-var amb))
-     v8 (bytecode amb)
-   ]
-      [v1 v2 v3 v4 [v5 v6] v7 v8])
 )
 
 (defn cargar-var-en-tabla [amb]
-  (if (not (= (estado amb) :sin-errores)) amb (aux-nuevo-ambiente-cargar-var amb))
+  (if (= (estado amb) :sin-errores)
+      (aux-cargar-var amb)
+      amb)
 )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -960,55 +939,21 @@
 ; user=> (declaracion-var ['VAR (list 'X (symbol ",") 'Y (symbol ";") 'BEGIN 'X (symbol ":=") 7 (symbol ";") 'Y (symbol ":=") 12 (symbol ";") 'END (symbol ".")) [] :sin-errores [[0] []] 0 '[[JMP ?]]])
 ; [BEGIN (X := 7 ; Y := 12 ; END .) [VAR X , Y ;] :sin-errores [[0] [[X VAR 0] [Y VAR 1]]] 2 [[JMP ?]]]
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defn aux-es-declaracion-de-var [amb]
-  (= (str (simb-actual amb)) "VAR")
-)
-
-(defn aux-extraer-vars [amb]
-  (let [
-    vect_total (simb-no-parseados-aun amb)
-    vect_red (take (.indexOf vect_total (symbol ";")) vect_total)
-  ]
-    (remove #(= (symbol ",") %) vect_red)
-  )
-)
-
-(defn aux-extraer-vector-de-vars [amb]
-  (let [
-    vect_total (simb-no-parseados-aun amb)
-    vect_red (take (inc (.indexOf vect_total (symbol ";"))) vect_total)
-  ]
-   (vec (cons (simb-actual amb) vect_red))
-  )
-)
-
-(defn aux-extraer-valores [amb]
-  (let [vect_total (simb-no-parseados-aun amb)]
-    (rest (drop (inc (.indexOf vect_total (symbol ";"))) vect_total))
-  )
-)
-
-(defn aux-nuevo-ambiente-declaracion-var [amb]
-   (let [
-     v1 (aux-extraer-valores amb)
-     v2 (aux-extraer-vector-de-vars amb)
-     v3 (estado amb)
-     v4 (first (contexto amb))
-     vect_vars (aux-extraer-vars amb)
-     v5 (aux-convertir-var vect_vars)
-     v6 (+ (prox-var amb) (count vect_vars)) ; sacar_cant_variables
-     v7 (nth amb (- (count amb) 1))
-   ]
-    ['BEGIN v1 v2 v3 [v4 v5] v6 v7])
-)
 
 (defn declaracion-var [amb]
-  (cond 
-    (not (= (estado amb) :sin-errores)) amb
-    (not (aux-es-declaracion-de-var amb)) amb
-    true (aux-nuevo-ambiente-declaracion-var amb)
-  )
+  (if (= (estado amb) :sin-errores)
+      (if (= (simb-actual amb) 'VAR)
+          (-> amb
+              (escanear)
+              (procesar-terminal ,,, identificador? 5)
+              (controlar-duplicado)
+              (cargar-var-en-tabla)
+              (declarar-mas-idents)
+              (procesar-terminal ,,, (symbol ";") 3))
+          amb)
+      amb)
 )
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Recibe un ambiente y, si su estado no es :sin-errores, lo devuelve intacto. De lo contrario, verifica si se debe
@@ -1290,10 +1235,12 @@
 ; user=> (buscar-coincidencias '[nil () [CALL X] :sin-errores [[0 3] [[X VAR 0] [Y VAR 1] [A PROCEDURE 1] [X VAR 2] [Y VAR 3] [B PROCEDURE 2]]] 6 [[JMP ?] [JMP 4] [CAL 1] RET]])
 ; ([X VAR 0] [X VAR 2])
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defn aux-get-ultimo-simbolo [v]
-	(if (< (.indexOf v (symbol ";")) 0)
-		(last v)
-		(last (take v (.indexOf v (symbol ";"))))
+(defn aux-get-ultimo-simbolo [v ult_sim]
+	(if (empty? v) 
+		ult_sim
+		(let [simb_actual (first v)]
+			(aux-get-ultimo-simbolo (rest v) (if (identificador? simb_actual) simb_actual ult_sim))
+		)
 	)
 )
 
@@ -1314,10 +1261,13 @@
 )
 
 (defn buscar-coincidencias [amb]
+	(println amb)
   (let [
+    ;simb (aux-get-ultimo-simbolo (simb-ya-parseados amb) nil)
     simb (last (simb-ya-parseados amb))
     vect_llamadas (second (contexto amb)) 
     ]
+    (println simb)
     (aux-buscar-coincidencias-rec simb vect_llamadas )
   )
 )
