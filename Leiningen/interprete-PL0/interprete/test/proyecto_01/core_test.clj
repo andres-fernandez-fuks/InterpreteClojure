@@ -97,9 +97,13 @@
 		(let [
 			amb_1 '[nil () [] :error [[0] [[X VAR 0] [Y VAR 1] [INI PROCEDURE 1]]] 2 [[JMP ?]]]
 			amb_2 '[nil () [] :sin-errores [[0 3] [[X VAR 0] [Y VAR 1] [INI PROCEDURE 1]]] 2 [[JMP ?]]]
+			amb_3 '[nil () [] :sin-errores [[0 2] [[X VAR 0] [Y VAR 1]]] 2 [[JMP ?]]]
+			amb_4 '[nil () [] :sin-errores [[0 0] []] 2 [[JMP ?]]]
 		]
 		  (is (= amb_1 (inicializar-contexto-local '[nil () [] :error [[0] [[X VAR 0] [Y VAR 1] [INI PROCEDURE 1]]] 2 [[JMP ?]]])))
 	    (is (= amb_2 (inicializar-contexto-local '[nil () [] :sin-errores [[0] [[X VAR 0] [Y VAR 1] [INI PROCEDURE 1]]] 2 [[JMP ?]]])))
+	    (is (= amb_3 (inicializar-contexto-local '[nil () [] :sin-errores [[0] [[X VAR 0] [Y VAR 1]]] 2 [[JMP ?]]])))
+	    (is (= amb_4 (inicializar-contexto-local '[nil () [] :sin-errores [[0] []] 2 [[JMP ?]]])))
 		)
 	)
 )
@@ -109,9 +113,13 @@
 		(let [
 			amb_1 "[VAR (X , Y ; BEGIN X := 7 ; Y := 12 ; END .) [] :error [[0] []] 0 [[JMP ?]]]"
 			amb_2 "[BEGIN (X := 7 ; Y := 12 ; END .) [VAR X , Y ;] :sin-errores [[0] [[X VAR 0] [Y VAR 1]]] 2 [[JMP ?]]]"
+			amb_3 "[CONST (X , Y ; BEGIN X := 7 ; Y := 12 ; END .) [] :sin-errores [[0] []] 0 [[JMP ?]]]"
+			amb_4 "[BEGIN (X := 7 ; Y := 12 ; Z := 20 ; END .) [VAR X , Y , Z ;] :sin-errores [[0] [[X VAR 0] [Y VAR 1] [Z VAR 2]]] 3 [[JMP ?]]]"
 		]
 		  (is (= amb_1 (str (declaracion-var ['VAR (list 'X (symbol ",") 'Y (symbol ";") 'BEGIN 'X (symbol ":=") 7 (symbol ";") 'Y (symbol ":=") 12 (symbol ";") 'END (symbol ".")) [] :error [[0] []] 0 '[[JMP ?]]]))))
 	    (is (= amb_2 (str (declaracion-var ['VAR (list 'X (symbol ",") 'Y (symbol ";") 'BEGIN 'X (symbol ":=") 7 (symbol ";") 'Y (symbol ":=") 12 (symbol ";") 'END (symbol ".")) [] :sin-errores [[0] []] 0 '[[JMP ?]]]))))
+			(is (= amb_3 (str (declaracion-var ['CONST (list 'X (symbol ",") 'Y (symbol ";") 'BEGIN 'X (symbol ":=") 7 (symbol ";") 'Y (symbol ":=") 12 (symbol ";") 'END (symbol ".")) [] :sin-errores [[0] []] 0 '[[JMP ?]]]))))
+			(is (= amb_4 (str (declaracion-var ['VAR (list 'X (symbol ",") 'Y (symbol ",") 'Z (symbol ";") 'BEGIN 'X (symbol ":=") 7 (symbol ";") 'Y (symbol ":=") 12 (symbol ";") 'Z (symbol ":=") 20 (symbol ";") 'END (symbol ".")) [] :sin-errores [[0] []] 0 '[[JMP ?]]]))))
 		)
 	)
 )
@@ -123,11 +131,13 @@
 			amb_2 "[7 (; Y := - 12 ; END .) [VAR X , Y ; BEGIN X :=] :sin-errores [[0] [[X VAR 0] [Y VAR 1]]] 2 []]"
 			amb_3 "[7 (; Y := - 12 ; END .) [VAR X , Y ; BEGIN X := +] :sin-errores [[0] [[X VAR 0] [Y VAR 1]]] 2 []]"
 			amb_4 "[7 (; Y := - 12 ; END .) [VAR X , Y ; BEGIN X := -] :sin-errores [[0] [[X VAR 0] [Y VAR 1]]] 2 []]"
+			amb_5 "[* (7 ; Y := - 12 ; END .) [VAR X , Y ; BEGIN X :=] :sin-errores [[0] [[X VAR 0] [Y VAR 1]]] 2 []]"
 		]
 		  (is (= amb_1 (str (procesar-signo-unario ['+ (list 7 (symbol ";") 'Y ':= '- 12 (symbol ";") 'END (symbol ".")) ['VAR 'X (symbol ",") 'Y (symbol ";") 'BEGIN 'X (symbol ":=")] :error '[[0] [[X VAR 0] [Y VAR 1]]] 2 []]))))
 	    (is (= amb_2 (str (procesar-signo-unario [7 (list (symbol ";") 'Y ':= '- 12 (symbol ";") 'END (symbol ".")) ['VAR 'X (symbol ",") 'Y (symbol ";") 'BEGIN 'X (symbol ":=")] :sin-errores '[[0] [[X VAR 0] [Y VAR 1]]] 2 []]))))
 			(is (= amb_3 (str (procesar-signo-unario ['+ (list 7 (symbol ";") 'Y ':= '- 12 (symbol ";") 'END (symbol ".")) ['VAR 'X (symbol ",") 'Y (symbol ";") 'BEGIN 'X (symbol ":=")] :sin-errores '[[0] [[X VAR 0] [Y VAR 1]]] 2 []]))))
 	    (is (= amb_4 (str (procesar-signo-unario ['- (list 7 (symbol ";") 'Y ':= '- 12 (symbol ";") 'END (symbol ".")) ['VAR 'X (symbol ",") 'Y (symbol ";") 'BEGIN 'X (symbol ":=")] :sin-errores '[[0] [[X VAR 0] [Y VAR 1]]] 2 []]))))
+	    (is (= amb_5 (str (procesar-signo-unario ['* (list 7 (symbol ";") 'Y ':= '- 12 (symbol ";") 'END (symbol ".")) ['VAR 'X (symbol ",") 'Y (symbol ";") 'BEGIN 'X (symbol ":=")] :sin-errores '[[0] [[X VAR 0] [Y VAR 1]]] 2 []]))))
 		)
 	)
 )
@@ -137,26 +147,35 @@
 		(let [
 			amb_1 "[X (* 2 END .) [VAR X ; BEGIN X :=] :error [[0] [[X VAR 0]]] 1 []]"
 			amb_2 "[END (.) [VAR X ; BEGIN X := X * 2] :sin-errores [[0] [[X VAR 0]]] 1 [[PFM 0] [PFI 2] MUL]]"
+			amb_3 "[END (.) [VAR X ; BEGIN X := X * 2 * 4] :sin-errores [[0] [[X VAR 0]]] 1 [[PFM 0] [PFI 2] MUL [PFI 4] MUL]]"
+			amb_4 "[END (.) [VAR Y ; BEGIN Y := Y * 4 / 6] :sin-errores [[0] [[Y VAR 0]]] 1 [[PFM 0] [PFI 4] MUL [PFI 6] DIV]]"
 		]
 			(is (= amb_1 (str (termino ['X (list '* 2 'END (symbol ".")) ['VAR 'X (symbol ";") 'BEGIN 'X (symbol ":=")] :error '[[0] [[X VAR 0]]] 1 []]))))
 		  (is (= amb_2 (str (termino ['X (list '* 2 'END (symbol ".")) ['VAR 'X (symbol ";") 'BEGIN 'X (symbol ":=")] :sin-errores '[[0] [[X VAR 0]]] 1 []]))))
+		  (is (= amb_3 (str (termino ['X (list '* 2 '* 4 'END (symbol ".")) ['VAR 'X (symbol ";") 'BEGIN 'X (symbol ":=")] :sin-errores '[[0] [[X VAR 0]]] 1 []]))))
+		  (is (= amb_4 (str (termino ['Y (list '* 4 '/ 6 'END (symbol ".")) ['VAR 'Y (symbol ";") 'BEGIN 'Y (symbol ":=")] :sin-errores '[[0] [[Y VAR 0]]] 1 []]))))
 	  )
 	)
 )
 
-(deftest test-termino
-	(testing "termino con diferentes llamadas"
+(deftest test-expresion
+	(testing "expresion con diferentes llamadas"
 		(let [
 			amb_1 "[- (( X * 2 + 1 ) END .) [VAR X ; BEGIN X :=] :error [[0] [[X VAR 0]]] 1 []]"
 			amb_2 "[END (.) [VAR X ; BEGIN X := + ( X * 2 + 1 )] :sin-errores [[0] [[X VAR 0]]] 1 [[PFM 0] [PFI 2] MUL [PFI 1] ADD]]"
 			amb_3 "[END (.) [VAR X ; BEGIN X := - ( X * 2 + 1 )] :sin-errores [[0] [[X VAR 0]]] 1 [[PFM 0] [PFI 2] MUL [PFI 1] ADD NEG]]"
+			amb_4 "[END (.) [VAR X ; BEGIN X := - ( X * 2 + 4 * 3 )] :sin-errores [[0] [[X VAR 0]]] 1 [[PFM 0] [PFI 2] MUL [PFI 4] [PFI 3] MUL ADD NEG]]"
+			amb_5 "[END (.) [VAR Y ; BEGIN Y := + ( Y / 2 - 5 + 6 )] :sin-errores [[0] [[Y VAR 0]]] 1 [[PFM 0] [PFI 2] DIV [PFI 5] SUB [PFI 6] ADD]]"
 		]
 			(is (= amb_1 (str (expresion ['- (list (symbol "(") 'X '* 2 '+ 1 (symbol ")") 'END (symbol ".")) ['VAR 'X (symbol ";") 'BEGIN 'X (symbol ":=")] :error '[[0] [[X VAR 0]]] 1 []]))))
 		  (is (= amb_2 (str (expresion ['+ (list (symbol "(") 'X '* 2 '+ 1 (symbol ")") 'END (symbol ".")) ['VAR 'X (symbol ";") 'BEGIN 'X (symbol ":=")] :sin-errores '[[0] [[X VAR 0]]] 1 []]))))
 		  (is (= amb_3 (str (expresion ['- (list (symbol "(") 'X '* 2 '+ 1 (symbol ")") 'END (symbol ".")) ['VAR 'X (symbol ";") 'BEGIN 'X (symbol ":=")] :sin-errores '[[0] [[X VAR 0]]] 1 []]))))
+		  (is (= amb_4 (str (expresion ['- (list (symbol "(") 'X '* 2 '+ 4 '* 3 (symbol ")") 'END (symbol ".")) ['VAR 'X (symbol ";") 'BEGIN 'X (symbol ":=")] :sin-errores '[[0] [[X VAR 0]]] 1 []]))))
+		  (is (= amb_5 (str (expresion ['+ (list (symbol "(") 'Y '/ 2 '- 5 '+ 6 (symbol ")") 'END (symbol ".")) ['VAR 'Y (symbol ";") 'BEGIN 'Y (symbol ":=")] :sin-errores '[[0] [[Y VAR 0]]] 1 []]))))
 	  )
 	)
 )
+
 
 (deftest test-aplicar-aritmetico
 	(testing "aplicar-aritmetico con diferentes llamadas"
@@ -216,6 +235,8 @@
 (deftest test-buscar-coincidencias
 	(testing "buscar-coincidencias con diferentes llamadas"
 		(is (= '([X VAR 0] [X VAR 2]) (buscar-coincidencias '[nil () [CALL X] :sin-errores [[0 3] [[X VAR 0] [Y VAR 1] [A PROCEDURE 1] [X VAR 2] [Y VAR 3] [B PROCEDURE 2]]] 6 [[JMP ?] [JMP 4] [CAL 1] RET]])))
+		(is (= '([Y VAR 1] [Y VAR 3]) (buscar-coincidencias '[nil () [CALL Y] :sin-errores [[0 3] [[X VAR 0] [Y VAR 1] [A PROCEDURE 1] [X VAR 2] [Y VAR 3] [B PROCEDURE 2]]] 6 [[JMP ?] [JMP 4] [CAL 1] RET]])))
+		(is (= '() (buscar-coincidencias '[nil () [CALL Z] :sin-errores [[0 3] [[X VAR 0] [Y VAR 1] [A PROCEDURE 1] [X VAR 2] [Y VAR 3] [B PROCEDURE 2]]] 6 [[JMP ?] [JMP 4] [CAL 1] RET]])))
 	)
 )
 
