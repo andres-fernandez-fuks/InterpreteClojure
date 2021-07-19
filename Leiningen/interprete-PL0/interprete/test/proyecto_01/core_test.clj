@@ -3,7 +3,7 @@
             [proyecto-01.core :refer :all]))
 
 (deftest test-a-mayusculas-salvo-strings 
-	(testing "A mayusculas salvo strings"
+	(testing "a-mayusculas-salvo-strings"
 		(is (= "  CONST Y = 2;" (a-mayusculas-salvo-strings "  const Y = 2;")))
     (is (= "  WRITELN ('Se ingresa un valor, se muestra su doble.');" (a-mayusculas-salvo-strings "  writeln ('Se ingresa un valor, se muestra su doble.');")))
     (is (= "X = 'x'" (a-mayusculas-salvo-strings "x = 'x'")))
@@ -13,7 +13,7 @@
 )
 
 (deftest test-palabra-reservada? 
-	(testing "Palabra reservada con diferentes llamadas"
+	(testing "palabra-reservada"
 		(is (= true (palabra-reservada? 'PROCEDURE)))
 		(is (= true (palabra-reservada? "BEGIN")))
 		(is (= true (palabra-reservada? 'CALL)))
@@ -30,7 +30,7 @@
 )
 
 (deftest test-identificador?
-  (testing "Identificador con diferentes llamadas"
+  (testing "identificador"
     (is (= false (identificador? 2)))
     (is (= true (identificador? 'V2)))
     (is (= true (identificador? "V2")))
@@ -49,7 +49,7 @@
 )
 
 (deftest test-cadena? 
-	(testing "Cadena con diferentes llamadas"
+	(testing "cadena"
 	  (is (= true (cadena? "'Hola'")))
 	  (is (= true (cadena? "''")))
 	  (is (= true (cadena? "'123#ABC'")))
@@ -62,7 +62,7 @@
 )
 
 (deftest test-ya-declarado-localmente?
-	(testing "ya-declarado-localmente? con diferentes llamadas"
+	(testing "ya-declarado-localmente?"
 	   (is (= true (ya-declarado-localmente? 'Y '[[0] [[X VAR 0] [Y VAR 1]]])))
     (is (= true (ya-declarado-localmente? 'Y '[[0 3] [[X VAR 0] [Y VAR 1] [INICIAR PROCEDURE 1] [Y CONST 2] [ASIGNAR PROCEDURE 2]]])))
     (is (= true (ya-declarado-localmente? 'Z '[[0] [[Z VAR 0]]])))
@@ -76,7 +76,7 @@
 )
 
 (deftest test-cargar-var-en-tabla
-	(testing "cargar-var-en-tabla con diferentes llamadas"
+	(testing "cargar-var-en-tabla"
 		(let [
 
 			amb_1 '[nil () [VAR X] :error [[0] []] 0 [[JMP ?]]]
@@ -95,7 +95,7 @@
 )
 
 (deftest test-inicializar-contexto-local
-	(testing "inicializar-contexto-local con diferentes llamadas"
+	(testing "inicializar-contexto-local"
 		(let [
 			amb_1 '[nil () [] :error [[0] [[X VAR 0] [Y VAR 1] [INI PROCEDURE 1]]] 2 [[JMP ?]]]
 			amb_2 '[nil () [] :sin-errores [[0 3] [[X VAR 0] [Y VAR 1] [INI PROCEDURE 1]]] 2 [[JMP ?]]]
@@ -111,7 +111,7 @@
 )
 
 (deftest test-declaracion-var
-	(testing "declaracion-var con diferentes llamadas"
+	(testing "declaracion-var"
 		(let [
 			amb_1 "[VAR (X , Y ; BEGIN X := 7 ; Y := 12 ; END .) [] :error [[0] []] 0 [[JMP ?]]]"
 			amb_2 "[BEGIN (X := 7 ; Y := 12 ; END .) [VAR X , Y ;] :sin-errores [[0] [[X VAR 0] [Y VAR 1]]] 2 [[JMP ?]]]"
@@ -127,7 +127,7 @@
 )
 
 (deftest test-procesar-signo-unario
-	(testing "procesar-signo-unario con diferentes llamadas"
+	(testing "procesar-signo-unario"
 		(let [
 			amb_1 "[+ (7 ; Y := - 12 ; END .) [VAR X , Y ; BEGIN X :=] :error [[0] [[X VAR 0] [Y VAR 1]]] 2 []]"
 			amb_2 "[7 (; Y := - 12 ; END .) [VAR X , Y ; BEGIN X :=] :sin-errores [[0] [[X VAR 0] [Y VAR 1]]] 2 []]"
@@ -145,7 +145,7 @@
 )
 
 (deftest test-termino
-	(testing "termino con diferentes llamadas"
+	(testing "termino"
 		(let [
 			amb_1 "[X (* 2 END .) [VAR X ; BEGIN X :=] :error [[0] [[X VAR 0]]] 1 []]"
 			amb_2 "[END (.) [VAR X ; BEGIN X := X * 2] :sin-errores [[0] [[X VAR 0]]] 1 [[PFM 0] [PFI 2] MUL]]"
@@ -161,7 +161,7 @@
 )
 
 (deftest test-expresion
-	(testing "expresion con diferentes llamadas"
+	(testing "expresion"
 		(let [
 			amb_1 "[- (( X * 2 + 1 ) END .) [VAR X ; BEGIN X :=] :error [[0] [[X VAR 0]]] 1 []]"
 			amb_2 "[END (.) [VAR X ; BEGIN X := + ( X * 2 + 1 )] :sin-errores [[0] [[X VAR 0]]] 1 [[PFM 0] [PFI 2] MUL [PFI 1] ADD]]"
@@ -180,7 +180,7 @@
 
 
 (deftest test-aplicar-aritmetico
-	(testing "aplicar-aritmetico con diferentes llamadas"
+	(testing "aplicar-aritmetico"
 		(is (= (aplicar-aritmetico + [1 2]) [3] ))
 		(is (= (aplicar-aritmetico - [1 4 1]) [1 3]))
 		(is (= (aplicar-aritmetico * [1 2 4]) [1 8]))
@@ -195,7 +195,7 @@
 )
 
 (deftest test-aplicar-relacional
-	(testing "aplicar-relacional con diferentes llamadas"
+	(testing "aplicar-relacional"
 		(is (= (aplicar-relacional > [7 5]) [1] ))
 		(is (= (aplicar-relacional > [4 7 5]) [4 1]))
 		(is (= (aplicar-relacional = [4 7 5]) [4 0]))
@@ -207,7 +207,7 @@
 )
 
 (deftest test-dump
-	(testing "dump con diferentes llamadas"
+	(testing "dump"
 		(let [
 			string_1 "0 [PFM 0]\r\n1 [PFI 2]\r\n2 MUL\r\n3 [PFI 1]\r\n4 ADD\r\n5 NEG\r\n"
 			string_2 "0 HLT\r\n"
@@ -219,7 +219,7 @@
 )
 
 (deftest test-generar
-	(testing "generar con diferentes llamadas"
+	(testing "generar"
 		(let [
 			amb_1 "[nil () [VAR X] :sin-errores [[0] []] 0 [[JMP ?] HLT]]"
 			amb_2 "[nil () [VAR X] :sin-errores [[0] []] 0 [[JMP ?] [PFM 0]]]"
@@ -235,15 +235,16 @@
 )
 
 (deftest test-buscar-coincidencias
-	(testing "buscar-coincidencias con diferentes llamadas"
+	(testing "buscar-coincidencias"
 		(is (= '([X VAR 0] [X VAR 2]) (buscar-coincidencias '[nil () [CALL X] :sin-errores [[0 3] [[X VAR 0] [Y VAR 1] [A PROCEDURE 1] [X VAR 2] [Y VAR 3] [B PROCEDURE 2]]] 6 [[JMP ?] [JMP 4] [CAL 1] RET]])))
 		(is (= '([Y VAR 1] [Y VAR 3]) (buscar-coincidencias '[nil () [CALL Y] :sin-errores [[0 3] [[X VAR 0] [Y VAR 1] [A PROCEDURE 1] [X VAR 2] [Y VAR 3] [B PROCEDURE 2]]] 6 [[JMP ?] [JMP 4] [CAL 1] RET]])))
 		(is (= '() (buscar-coincidencias '[nil () [CALL Z] :sin-errores [[0 3] [[X VAR 0] [Y VAR 1] [A PROCEDURE 1] [X VAR 2] [Y VAR 3] [B PROCEDURE 2]]] 6 [[JMP ?] [JMP 4] [CAL 1] RET]])))
+		(is (= '() (buscar-coincidencias '[nil () [CALL X] :sin-errores [[0 3] []] 6 [[JMP ?] [JMP 4] [CAL 1] RET]])))
 	)
 )
 
 (deftest test-fixup
-	(testing "fixup con diferentes llamadas"
+	(testing "fixup"
 		(let [
 			amb_1 "[WRITELN (END .) [] :error [[0 3] []] 6 [[JMP ?] [JMP ?] [CAL 1] RET]]"
 			amb_2 "[WRITELN (END .) [] :sin-errores [[0 3] []] 6 [[JMP ?] [JMP 4] [CAL 1] RET]]"
@@ -257,7 +258,7 @@
 )
 
 (deftest  test-generar-operador-relacional
-	(testing "fixup con diferentes llamadas"
+	(testing "generar-operador-relacional"
 		(let [
 			amb_1 "[WRITELN (END .) [] :error [[0 3] []] 6 [[JMP ?] [JMP ?] [CAL 1] RET]]"
 			amb_2 "[WRITELN (END .) [] :sin-errores [[0 3] []] 6 [[JMP ?] [JMP ?] [CAL 1] RET]]"
@@ -273,7 +274,7 @@
 )
 
 (deftest  test-generar-signo
-	(testing "fixup con diferentes llamadas"
+	(testing "generar-signo"
 		(let [
 			amb_1 "[nil () [] :error [[0] [[X VAR 0]]] 1 [MUL ADD]]"
 			amb_2 "[nil () [] :error [[0] [[X VAR 0]]] 1 [MUL ADD]]"

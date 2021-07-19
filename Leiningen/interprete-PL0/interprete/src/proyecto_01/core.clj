@@ -659,12 +659,6 @@
 (defn interpretar [cod mem cont-prg pila-dat pila-llam]
   (let [fetched (cod cont-prg),
         opcode (if (symbol? fetched) fetched (first fetched))]
-       ;(spy "pila" pila-dat)
-        ;(spy "opcode" opcode)
-        ;(if (not (= (type fetched) clojure.lang.Symbol))
-        ;(spy "val" (second fetched))
-        	;nil
-        ;)
        (case opcode
           HLT nil
           IN (let [entr (try (Integer/parseInt (read-line)) (catch Exception e ""))]
@@ -715,21 +709,22 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Recibe una cadena y la devuelve con sus letras convertidas a mayusculas, salvo las subcadenas contenidas entre
-; apostrofocont-prgs. Por ejemplo:
+; apostrofos. Por ejemplo:
 ; user=> (a-mayusculas-salvo-strings "  const Y = 2;")
 ; "  CONST Y = 2;"
 ; user=> (a-mayusculas-salvo-strings "  writeln ('Se ingresa un valor, se muestra su doble.');")
 ; "  WRITELN ('Se ingresa un valor, se muestra su doble.');"
  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
+; no contemplo el caso en el que haya un apostrofo de apertura pero no de cierre, porque no está claro cómo debería funcionar en ese caso.
 (defn a-mayusculas-salvo-strings 
   ([s]
     (let [sec_letras (seq s)]
-      (apply str (reverse (a-mayusculas-salvo-strings sec_letras true)))
+      (apply str (reverse (a-mayusculas-salvo-strings sec_letras true))); la devuelve al revés, por eso aplico reverse
     )
   )
   ([secuencia es_mayuscula]
-    (if (empty? secuencia) '()
+    (if (empty? secuencia)
+    	'()
       (let [es_mayuscula_act (if (= (last secuencia) \') (not es_mayuscula) es_mayuscula)]
          (cons (if es_mayuscula (clojure.string/upper-case (last secuencia)) (last secuencia)) 
                               (a-mayusculas-salvo-strings (butlast secuencia) es_mayuscula_act))
