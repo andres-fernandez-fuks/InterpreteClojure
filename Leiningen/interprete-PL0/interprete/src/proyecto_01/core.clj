@@ -1368,28 +1368,8 @@
 ; user=> (generar-signo [nil () [] :sin-errores '[[0] [[X VAR 0]]] 1 '[MUL ADD]] '-)
 ; [nil () [] :sin-errores [[0] [[X VAR 0]]] 1 [MUL ADD NEG]]
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defn aux-generar-instr [signo]
-	(case (str signo)
-		("+") 'ADD
-		("-") 'NEG
-		("*") 'MUL
-		("/") 'DIV
-	)
-)
-
-(defn aux-agregar-instr-si-no-repetida [signo bytecode]
-	(let [instr (aux-generar-instr signo)]
-		(if (< (.indexOf bytecode instr) 0)
-			(conj bytecode instr)
-			bytecode
-		)
-	)
-)
-
-(defn aux-signo-invalido [op]
-  (let [signos ["+" "-" "*" "/"]]
-  	(< (.indexOf signos (str op)) 0)
-  )
+(defn aux-signo-invalido [operador]
+  (not (= '- operador))
 )
 
 (defn aux-amb-con-errores [amb]
@@ -1400,7 +1380,7 @@
   (cond
     (aux-amb-con-errores amb) amb
     (aux-signo-invalido signo) amb
-    true (assoc amb 6 (aux-agregar-instr-si-no-repetida signo (bytecode amb)))
+    true (assoc amb 6 (conj (bytecode amb) 'NEG))
   )
 )
 
